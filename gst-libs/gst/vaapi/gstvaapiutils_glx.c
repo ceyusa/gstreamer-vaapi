@@ -664,6 +664,14 @@ gl_init_vtable(void)
     gboolean has_extension;
 
     /* GLX_EXT_texture_from_pixmap */
+    gl_vtable->glx_create_pixmap = (PFNGLXCREATEPIXMAPPROC)
+        get_proc_address("glXCreatePixmap");
+    if (!gl_vtable->glx_create_pixmap)
+        return NULL;
+    gl_vtable->glx_destroy_pixmap = (PFNGLXDESTROYPIXMAPPROC)
+        get_proc_address("glXDestroyPixmap");
+    if (!gl_vtable->glx_destroy_pixmap)
+        return NULL;
     gl_vtable->glx_bind_tex_image = (PFNGLXBINDTEXIMAGEEXTPROC)
         get_proc_address("glXBindTexImageEXT");
     if (!gl_vtable->glx_bind_tex_image)
@@ -844,16 +852,10 @@ gl_create_pixmap_object(Display *dpy, guint width, guint height)
 
     /* XXX: this won't work for different displays */
     if (!gl_vtable->has_texture_from_pixmap) {
-        const char *glx_extensions;
-        int glx_major, glx_minor;
-        glx_extensions = glXQueryExtensionsString(dpy, screen);
+        const char *glx_extensions = glXQueryExtensionsString(dpy, screen);
         if (!glx_extensions)
             return NULL;
         if (!find_string("GLX_EXT_texture_from_pixmap", glx_extensions, " "))
-            return NULL;
-        if (!glXQueryVersion(dpy, &glx_major, &glx_minor))
-            return NULL;
-        if (glx_major < 1 || (glx_major == 1 && glx_minor < 3)) /* 1.3 */
             return NULL;
         gl_vtable->has_texture_from_pixmap = TRUE;
     }
@@ -906,7 +908,12 @@ gl_create_pixmap_object(Display *dpy, guint width, guint height)
     *attr++ = GL_NONE;
 
     x11_trap_errors();
-    pixo->glx_pixmap = glXCreatePixmap(dpy, fbconfig[0], pixo->pixmap, pixmap_attrs);
+    pixo->glx_pixmap = gl_vtable->glx_create_pixmap(
+        dpy,
+        fbconfig[0],
+        pixo->pixmap,
+        pixmap_attrs
+    );
     free(fbconfig);
     if (x11_untrap_errors() != 0)
         goto error;
@@ -934,6 +941,8 @@ error:
 void
 gl_destroy_pixmap_object(GLPixmapObject *pixo)
 {
+    GLVTable * const gl_vtable = gl_get_vtable();
+
     if (!pixo)
         return;
 
@@ -945,7 +954,7 @@ gl_destroy_pixmap_object(GLPixmapObject *pixo)
     }
 
     if (pixo->glx_pixmap) {
-        glXDestroyPixmap(pixo->dpy, pixo->glx_pixmap);
+        gl_vtable->glx_destroy_pixmap(pixo->dpy, pixo->glx_pixmap);
         pixo->glx_pixmap = None;
     }
 
