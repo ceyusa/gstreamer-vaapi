@@ -30,11 +30,24 @@
 
 G_BEGIN_DECLS
 
+#define GST_VAAPI_WINDOW_WAYLAND(obj)		\
+    ((GstVaapiWindowWayland *)(obj))
+
 typedef struct _GstVaapiWindowWayland GstVaapiWindowWayland;
 
 GstVaapiWindow *
 gst_vaapi_window_wayland_new (GstVaapiDisplay * display, guint width,
     guint height);
+
+GstVaapiWindow *
+gst_vaapi_window_wayland_new_with_surface (GstVaapiDisplay * display,
+    guintptr wl_surface);
+
+guintptr
+gst_vaapi_window_wayland_get_surface (GstVaapiWindowWayland * window);
+
+gboolean
+gst_vaapi_window_wayland_is_foreign_surface (GstVaapiWindowWayland * window);
 
 G_END_DECLS
 

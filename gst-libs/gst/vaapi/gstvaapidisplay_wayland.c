@@ -171,14 +171,12 @@ gst_vaapi_display_wayland_setup (GstVaapiDisplay * display)
   if (!priv->width || !priv->height) {
     wl_display_roundtrip (priv->wl_display);
     if (!priv->width || !priv->height) {
-      GST_ERROR ("failed to determine the display size");
-      return FALSE;
+      GST_WARNING ("failed to determine the display size");
     }
   }
 
   if (!priv->compositor) {
-    GST_ERROR ("failed to bind compositor interface");
-    return FALSE;
+    GST_WARNING ("failed to bind compositor interface");
   }
 
   if (!priv->shell) {
@@ -311,8 +309,11 @@ gst_vaapi_display_wayland_get_size (GstVaapiDisplay * display,
   GstVaapiDisplayWaylandPrivate *const priv =
       GST_VAAPI_DISPLAY_WAYLAND_GET_PRIVATE (display);
 
-  if (!priv->output)
+  if (!priv->output) {
+    *pwidth = 0;
+    *pheight = 0;
     return;
+  }
 
   if (pwidth)
     *pwidth = priv->width;

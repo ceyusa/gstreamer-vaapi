@@ -267,11 +267,14 @@ gst_vaapi_window_wayland_create (GstVaapiWindow * window,
       GST_VAAPI_WINDOW_WAYLAND_GET_PRIVATE (window);
   GstVaapiDisplayWaylandPrivate *const priv_display =
       GST_VAAPI_DISPLAY_WAYLAND_GET_PRIVATE (GST_VAAPI_OBJECT_DISPLAY (window));
+  struct wl_surface *wl_surface =
+      (struct wl_surface *) GST_VAAPI_OBJECT_ID (window);
 
   GST_DEBUG ("create window, size %ux%u", *width, *height);
 
   g_return_val_if_fail (priv_display->compositor != NULL, FALSE);
-  g_return_val_if_fail (priv_display->shell != NULL, FALSE);
+  if (!window->use_foreign_window)
+    g_return_val_if_fail (priv_display->shell != NULL, FALSE);
 
   GST_VAAPI_OBJECT_LOCK_DISPLAY (window);
   priv->event_queue = wl_display_create_queue (priv_display->wl_display);
@@ -280,11 +283,19 @@ gst_vaapi_window_wayland_create (GstVaapiWindow * window,
     return FALSE;
 
   GST_VAAPI_OBJECT_LOCK_DISPLAY (window);
-  priv->surface = wl_compositor_create_surface (priv_display->compositor);
+  priv->surface = window->use_foreign_window ?
+      wl_surface : wl_compositor_create_surface (priv_display->compositor);
   GST_VAAPI_OBJECT_UNLOCK_DISPLAY (window);
   if (!priv->surface)
     return FALSE;
   wl_proxy_set_queue ((struct wl_proxy *) priv->surface, priv->event_queue);
+
+  priv->surface_format = GST_VIDEO_FORMAT_ENCODED;
+  priv->use_vpp = GST_VAAPI_DISPLAY_HAS_VPP (GST_VAAPI_OBJECT_DISPLAY (window));
+  priv->is_shown = TRUE;
+
+  if (window->use_foreign_window)
+    return TRUE;
 
   GST_VAAPI_OBJECT_LOCK_DISPLAY (window);
   priv->shell_surface =
@@ -338,7 +349,8 @@ gst_vaapi_window_wayland_destroy (GstVaapiWindow * window)
   }
 
   if (priv->surface) {
-    wl_surface_destroy (priv->surface);
+    if (!window->use_foreign_window)
+      wl_surface_destroy (priv->surface);
     priv->surface = NULL;
   }
 
@@ -361,6 +373,9 @@ gst_vaapi_window_wayland_resize (GstVaapiWindow * window,
       GST_VAAPI_WINDOW_WAYLAND_GET_PRIVATE (window);
   GstVaapiDisplayWaylandPrivate *const priv_display =
       GST_VAAPI_DISPLAY_WAYLAND_GET_PRIVATE (GST_VAAPI_OBJECT_DISPLAY (window));
+
+  if (window->use_foreign_window)
+    return TRUE;
 
   GST_DEBUG ("resize window, new size %ux%u", width, height);
 
@@ -594,4 +609,66 @@ gst_vaapi_window_wayland_new (GstVaapiDisplay * display,
   return gst_vaapi_window_new_internal (GST_VAAPI_WINDOW_CLASS
       (gst_vaapi_window_wayland_class ()), display, GST_VAAPI_ID_INVALID, width,
       height);
+}
+
+/**
+ * gst_vaapi_window_wayland_new_with_surface:
+ * @display: a #GstVaapiDisplay
+ * @wl_surface: a Wayland surface pointer
+ *
+ * Creates a window with the specified @wl_surface. The window
+ * will be attached to the @display and remains invisible to the user
+ * until gst_vaapi_window_show() is called.
+ *
+ * Return value: the newly allocated #GstVaapiWindow object
+ */
+GstVaapiWindow *
+gst_vaapi_window_wayland_new_with_surface (GstVaapiDisplay * display,
+    guintptr wl_surface)
+{
+  GST_DEBUG ("new window from surface 0x%" G_GUINTPTR_FORMAT, wl_surface);
+
+  g_return_val_if_fail (GST_VAAPI_IS_DISPLAY_WAYLAND (display), NULL);
+
+  if (!wl_surface)
+    return NULL;
+
+  return gst_vaapi_window_new_internal (GST_VAAPI_WINDOW_CLASS
+      (gst_vaapi_window_wayland_class ()), display, wl_surface, 0, 0);
+}
+
+/**
+ * gst_vaapi_window_wayland_get_surface:
+ * @window: a #GstVaapiWindowWayland
+ *
+ * Returns the underlying wayland surface that was bound with
+ * gst_vaapi_window_wayland_new_with_surface().
+ *
+ * Return value: the underlying wayland surface bound to @window.
+ */
+guintptr
+gst_vaapi_window_wayland_get_surface (GstVaapiWindowWayland * window)
+{
+  g_return_val_if_fail (window != NULL, 0);
+
+  return GST_VAAPI_OBJECT_ID (window);
+}
+
+/**
+ * gst_vaapi_window_wayland_is_foreign_surface:
+ * @window: a #GstVaapiWindowWayland
+ *
+ * Checks whether the @window surface was created by
+ * gst_vaapi_window_wayland_new() or bound with
+ * gst_vaapi_window_wayland_new_with_surface().
+ *
+ * Return value: %TRUE if the underlying surface is owned by the
+ *   caller (foreign window)
+ */
+gboolean
+gst_vaapi_window_wayland_is_foreign_surface (GstVaapiWindowWayland * window)
+{
+  g_return_val_if_fail (window != NULL, FALSE);
+
+  return GST_VAAPI_WINDOW (window)->use_foreign_window;
 }
