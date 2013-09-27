@@ -565,6 +565,30 @@ main (int argc, char *argv[])
     gst_vaapi_display_unref (display);
   }
   g_print ("\n");
+
+  g_print ("#\n");
+  g_print ("# Create display with gst_vaapi_display_wayland_new_with_display()");
+  g_print ("\n#\n");
+  {
+    struct wl_display *wl_dpy = NULL;
+    wl_dpy = wl_display_connect (NULL);
+    if (!wl_dpy)
+      g_error ("could not connect to Wayland Display");
+
+    display = gst_vaapi_display_wayland_new_with_display (wl_dpy);
+    if (!display)
+      g_error ("could not create Gst/VA display");
+
+    gst_vaapi_display_get_size (display, &width, &height);
+    g_print("Display size: %ux%u\n", width, height);
+
+    gst_vaapi_display_get_pixel_aspect_ratio (display, &par_n, &par_d);
+    g_print ("Pixel aspect ratio: %u/%u\n", par_n, par_d);
+
+    dump_info (display);
+    gst_vaapi_display_unref (display);
+  }
+  g_print ("\n");
 #endif
 
   gst_deinit ();
