@@ -21,7 +21,7 @@
  */
 
 #include "sysdeps.h"
-#include <vapl/gsth264parser.h>
+#include <vapl/vapl_h264_parser.h>
 #include "gstvaapiutils_h264_priv.h"
 
 struct map
@@ -144,37 +144,37 @@ gst_vaapi_utils_h264_get_profile (guint8 profile_idc)
   GstVaapiProfile profile;
 
   switch (profile_idc) {
-    case GST_H264_PROFILE_BASELINE:
+    case VAPL_H264_PROFILE_BASELINE:
       profile = GST_VAAPI_PROFILE_H264_BASELINE;
       break;
-    case GST_H264_PROFILE_MAIN:
+    case VAPL_H264_PROFILE_MAIN:
       profile = GST_VAAPI_PROFILE_H264_MAIN;
       break;
-    case GST_H264_PROFILE_EXTENDED:
+    case VAPL_H264_PROFILE_EXTENDED:
       profile = GST_VAAPI_PROFILE_H264_EXTENDED;
       break;
-    case GST_H264_PROFILE_HIGH:
+    case VAPL_H264_PROFILE_HIGH:
       profile = GST_VAAPI_PROFILE_H264_HIGH;
       break;
-    case GST_H264_PROFILE_HIGH10:
+    case VAPL_H264_PROFILE_HIGH10:
       profile = GST_VAAPI_PROFILE_H264_HIGH10;
       break;
-    case GST_H264_PROFILE_HIGH_422:
+    case VAPL_H264_PROFILE_HIGH_422:
       profile = GST_VAAPI_PROFILE_H264_HIGH_422;
       break;
-    case GST_H264_PROFILE_HIGH_444:
+    case VAPL_H264_PROFILE_HIGH_444:
       profile = GST_VAAPI_PROFILE_H264_HIGH_444;
       break;
-    case GST_H264_PROFILE_SCALABLE_BASELINE:
+    case VAPL_H264_PROFILE_SCALABLE_BASELINE:
       profile = GST_VAAPI_PROFILE_H264_SCALABLE_BASELINE;
       break;
-    case GST_H264_PROFILE_SCALABLE_HIGH:
+    case VAPL_H264_PROFILE_SCALABLE_HIGH:
       profile = GST_VAAPI_PROFILE_H264_SCALABLE_HIGH;
       break;
-    case GST_H264_PROFILE_MULTIVIEW_HIGH:
+    case VAPL_H264_PROFILE_MULTIVIEW_HIGH:
       profile = GST_VAAPI_PROFILE_H264_MULTIVIEW_HIGH;
       break;
-    case GST_H264_PROFILE_STEREO_HIGH:
+    case VAPL_H264_PROFILE_STEREO_HIGH:
       profile = GST_VAAPI_PROFILE_H264_STEREO_HIGH;
       break;
     default:
@@ -194,37 +194,37 @@ gst_vaapi_utils_h264_get_profile_idc (GstVaapiProfile profile)
   switch (profile) {
     case GST_VAAPI_PROFILE_H264_BASELINE:
     case GST_VAAPI_PROFILE_H264_CONSTRAINED_BASELINE:
-      profile_idc = GST_H264_PROFILE_BASELINE;
+      profile_idc = VAPL_H264_PROFILE_BASELINE;
       break;
     case GST_VAAPI_PROFILE_H264_MAIN:
-      profile_idc = GST_H264_PROFILE_MAIN;
+      profile_idc = VAPL_H264_PROFILE_MAIN;
       break;
     case GST_VAAPI_PROFILE_H264_EXTENDED:
-      profile_idc = GST_H264_PROFILE_EXTENDED;
+      profile_idc = VAPL_H264_PROFILE_EXTENDED;
       break;
     case GST_VAAPI_PROFILE_H264_HIGH:
-      profile_idc = GST_H264_PROFILE_HIGH;
+      profile_idc = VAPL_H264_PROFILE_HIGH;
       break;
     case GST_VAAPI_PROFILE_H264_HIGH10:
-      profile_idc = GST_H264_PROFILE_HIGH10;
+      profile_idc = VAPL_H264_PROFILE_HIGH10;
       break;
     case GST_VAAPI_PROFILE_H264_HIGH_422:
-      profile_idc = GST_H264_PROFILE_HIGH_422;
+      profile_idc = VAPL_H264_PROFILE_HIGH_422;
       break;
     case GST_VAAPI_PROFILE_H264_HIGH_444:
-      profile_idc = GST_H264_PROFILE_HIGH_444;
+      profile_idc = VAPL_H264_PROFILE_HIGH_444;
       break;
     case GST_VAAPI_PROFILE_H264_SCALABLE_BASELINE:
-      profile_idc = GST_H264_PROFILE_SCALABLE_BASELINE;
+      profile_idc = VAPL_H264_PROFILE_SCALABLE_BASELINE;
       break;
     case GST_VAAPI_PROFILE_H264_SCALABLE_HIGH:
-      profile_idc = GST_H264_PROFILE_SCALABLE_HIGH;
+      profile_idc = VAPL_H264_PROFILE_SCALABLE_HIGH;
       break;
     case GST_VAAPI_PROFILE_H264_MULTIVIEW_HIGH:
-      profile_idc = GST_H264_PROFILE_MULTIVIEW_HIGH;
+      profile_idc = VAPL_H264_PROFILE_MULTIVIEW_HIGH;
       break;
     case GST_VAAPI_PROFILE_H264_STEREO_HIGH:
-      profile_idc = GST_H264_PROFILE_STEREO_HIGH;
+      profile_idc = VAPL_H264_PROFILE_STEREO_HIGH;
       break;
     default:
       g_debug ("unsupported GstVaapiProfile value");

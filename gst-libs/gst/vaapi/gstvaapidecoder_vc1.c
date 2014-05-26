@@ -27,7 +27,7 @@
 
 #include "sysdeps.h"
 #include <string.h>
-#include <vapl/gstvc1parser.h>
+#include <vapl/vapl_vc1_parser.h>
 #include "gstvaapidecoder_vc1.h"
 #include "gstvaapidecoder_objects.h"
 #include "gstvaapidecoder_dpb.h"
@@ -54,10 +54,10 @@ struct _GstVaapiDecoderVC1Private {
     GstVaapiProfile             profile;
     guint                       width;
     guint                       height;
-    GstVC1SeqHdr                seq_hdr;
-    GstVC1EntryPointHdr         entrypoint_hdr;
-    GstVC1FrameHdr              frame_hdr;
-    GstVC1BitPlanes            *bitplanes;
+    VaplVc1SeqHdr               seq_hdr;
+    VaplVc1EntryPointHdr        entrypoint_hdr;
+    VaplVc1FrameHdr             frame_hdr;
+    VaplVc1BitPlanes           *bitplanes;
     GstVaapiPicture            *current_picture;
     GstVaapiPicture            *last_non_b_picture;
     GstVaapiDpb                *dpb;
@@ -96,18 +96,18 @@ struct _GstVaapiDecoderVC1Class {
 };
 
 static GstVaapiDecoderStatus
-get_status(GstVC1ParserResult result)
+get_status(VaplVc1ParserResult result)
 {
     GstVaapiDecoderStatus status;
 
     switch (result) {
-    case GST_VC1_PARSER_OK:
+    case VAPL_VC1_PARSER_OK:
         status = GST_VAAPI_DECODER_STATUS_SUCCESS;
         break;
-    case GST_VC1_PARSER_NO_BDU_END:
+    case VAPL_VC1_PARSER_NO_BDU_END:
         status = GST_VAAPI_DECODER_STATUS_ERROR_NO_DATA;
         break;
-    case GST_VC1_PARSER_ERROR:
+    case VAPL_VC1_PARSER_ERROR:
         status = GST_VAAPI_DECODER_STATUS_ERROR_BITSTREAM_PARSER;
         break;
     default:
@@ -127,7 +127,7 @@ gst_vaapi_decoder_vc1_close(GstVaapiDecoderVC1 *decoder)
     gst_vaapi_dpb_replace(&priv->dpb, NULL);
 
     if (priv->bitplanes) {
-        gst_vc1_bitplanes_free(priv->bitplanes);
+        vapl_vc1_bitplanes_free(priv->bitplanes);
         priv->bitplanes = NULL;
     }
 }
@@ -143,7 +143,7 @@ gst_vaapi_decoder_vc1_open(GstVaapiDecoderVC1 *decoder)
     if (!priv->dpb)
         return FALSE;
 
-    priv->bitplanes = gst_vc1_bitplanes_new();
+    priv->bitplanes = vapl_vc1_bitplanes_new();
     if (!priv->bitplanes)
         return FALSE;
     return TRUE;
@@ -254,23 +254,23 @@ error:
 }
 
 static GstVaapiDecoderStatus
-decode_sequence(GstVaapiDecoderVC1 *decoder, GstVC1BDU *rbdu, GstVC1BDU *ebdu)
+decode_sequence(GstVaapiDecoderVC1 *decoder, VaplVc1BDU *rbdu, VaplVc1BDU *ebdu)
 {
     GstVaapiDecoder * const base_decoder = GST_VAAPI_DECODER(decoder);
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
-    GstVC1SeqHdr * const seq_hdr = &priv->seq_hdr;
-    GstVC1AdvancedSeqHdr * const adv_hdr = &seq_hdr->advanced;
-    GstVC1SeqStructC * const structc = &seq_hdr->struct_c;
-    GstVC1ParserResult result;
+    VaplVc1SeqHdr * const seq_hdr = &priv->seq_hdr;
+    VaplVc1AdvancedSeqHdr * const adv_hdr = &seq_hdr->advanced;
+    VaplVc1SeqStructC * const structc = &seq_hdr->struct_c;
+    VaplVc1ParserResult result;
     GstVaapiProfile profile;
     guint width, height, fps_n, fps_d, par_n, par_d;
 
-    result = gst_vc1_parse_sequence_header(
+    result = vapl_vc1_parse_sequence_header(
         rbdu->data + rbdu->offset,
         rbdu->size,
         seq_hdr
     );
-    if (result != GST_VC1_PARSER_OK) {
+    if (result != VAPL_VC1_PARSER_OK) {
         GST_ERROR("failed to parse sequence layer");
         return get_status(result);
     }
@@ -286,9 +286,9 @@ decode_sequence(GstVaapiDecoderVC1 *decoder, GstVC1BDU *rbdu, GstVC1BDU *ebdu)
 
     /* Validate profile */
     switch (seq_hdr->profile) {
-    case GST_VC1_PROFILE_SIMPLE:
-    case GST_VC1_PROFILE_MAIN:
-    case GST_VC1_PROFILE_ADVANCED:
+    case VAPL_VC1_PROFILE_SIMPLE:
+    case VAPL_VC1_PROFILE_MAIN:
+    case VAPL_VC1_PROFILE_ADVANCED:
         break;
     default:
         GST_ERROR("unsupported profile %d", seq_hdr->profile);
@@ -300,14 +300,14 @@ decode_sequence(GstVaapiDecoderVC1 *decoder, GstVC1BDU *rbdu, GstVC1BDU *ebdu)
     par_n = 0;
     par_d = 0;
     switch (seq_hdr->profile) {
-    case GST_VC1_PROFILE_SIMPLE:
-    case GST_VC1_PROFILE_MAIN:
+    case VAPL_VC1_PROFILE_SIMPLE:
+    case VAPL_VC1_PROFILE_MAIN:
         if (structc->wmvp) {
             fps_n = structc->framerate;
             fps_d = 1;
         }
         break;
-    case GST_VC1_PROFILE_ADVANCED:
+    case VAPL_VC1_PROFILE_ADVANCED:
         fps_n = adv_hdr->fps_n;
         fps_d = adv_hdr->fps_d;
         par_n = adv_hdr->par_n;
@@ -325,12 +325,12 @@ decode_sequence(GstVaapiDecoderVC1 *decoder, GstVC1BDU *rbdu, GstVC1BDU *ebdu)
         gst_vaapi_decoder_set_pixel_aspect_ratio(base_decoder, par_n, par_d);
 
     switch (seq_hdr->profile) {
-    case GST_VC1_PROFILE_SIMPLE:
-    case GST_VC1_PROFILE_MAIN:
+    case VAPL_VC1_PROFILE_SIMPLE:
+    case VAPL_VC1_PROFILE_MAIN:
         width  = seq_hdr->struct_c.coded_width;
         height = seq_hdr->struct_c.coded_height;
         break;
-    case GST_VC1_PROFILE_ADVANCED:
+    case VAPL_VC1_PROFILE_ADVANCED:
         width  = seq_hdr->advanced.max_coded_width;
         height = seq_hdr->advanced.max_coded_height;
         break;
@@ -350,13 +350,13 @@ decode_sequence(GstVaapiDecoderVC1 *decoder, GstVC1BDU *rbdu, GstVC1BDU *ebdu)
     }
 
     switch (seq_hdr->profile) {
-    case GST_VC1_PROFILE_SIMPLE:
+    case VAPL_VC1_PROFILE_SIMPLE:
         profile = GST_VAAPI_PROFILE_VC1_SIMPLE;
         break;
-    case GST_VC1_PROFILE_MAIN:
+    case VAPL_VC1_PROFILE_MAIN:
         profile = GST_VAAPI_PROFILE_VC1_MAIN;
         break;
-    case GST_VC1_PROFILE_ADVANCED:
+    case VAPL_VC1_PROFILE_ADVANCED:
         profile = GST_VAAPI_PROFILE_VC1_ADVANCED;
         break;
     default:
@@ -385,20 +385,20 @@ decode_sequence_end(GstVaapiDecoderVC1 *decoder)
 }
 
 static GstVaapiDecoderStatus
-decode_entry_point(GstVaapiDecoderVC1 *decoder, GstVC1BDU *rbdu, GstVC1BDU *ebdu)
+decode_entry_point(GstVaapiDecoderVC1 *decoder, VaplVc1BDU *rbdu, VaplVc1BDU *ebdu)
 {
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
-    GstVC1SeqHdr * const seq_hdr = &priv->seq_hdr;
-    GstVC1EntryPointHdr * const entrypoint_hdr = &priv->entrypoint_hdr;
-    GstVC1ParserResult result;
+    VaplVc1SeqHdr * const seq_hdr = &priv->seq_hdr;
+    VaplVc1EntryPointHdr * const entrypoint_hdr = &priv->entrypoint_hdr;
+    VaplVc1ParserResult result;
 
-    result = gst_vc1_parse_entry_point_header(
+    result = vapl_vc1_parse_entry_point_header(
         rbdu->data + rbdu->offset,
         rbdu->size,
         entrypoint_hdr,
         seq_hdr
     );
-    if (result != GST_VC1_PARSER_OK) {
+    if (result != VAPL_VC1_PARSER_OK) {
         GST_ERROR("failed to parse entrypoint layer");
         return get_status(result);
     }
@@ -420,10 +420,10 @@ static guint
 get_PTYPE(guint ptype)
 {
     switch (ptype) {
-    case GST_VC1_PICTURE_TYPE_I:  return 0;
-    case GST_VC1_PICTURE_TYPE_P:  return 1;
-    case GST_VC1_PICTURE_TYPE_B:  return 2;
-    case GST_VC1_PICTURE_TYPE_BI: return 3;
+    case VAPL_VC1_PICTURE_TYPE_I:  return 0;
+    case VAPL_VC1_PICTURE_TYPE_P:  return 1;
+    case VAPL_VC1_PICTURE_TYPE_B:  return 2;
+    case VAPL_VC1_PICTURE_TYPE_BI: return 3;
     }
     return 4; /* skipped P-frame */
 }
@@ -439,29 +439,29 @@ get_BFRACTION(guint bfraction)
         guint16 value;
     }
     bfraction_map[] = {
-        {  0,  GST_VC1_BFRACTION_BASIS      / 2 },
-        {  1,  GST_VC1_BFRACTION_BASIS      / 3 },
-        {  2, (GST_VC1_BFRACTION_BASIS * 2) / 3 },
-        {  3,  GST_VC1_BFRACTION_BASIS      / 4 },
-        {  4, (GST_VC1_BFRACTION_BASIS * 3) / 4 },
-        {  5,  GST_VC1_BFRACTION_BASIS      / 5 },
-        {  6, (GST_VC1_BFRACTION_BASIS * 2) / 5 },
-        {  7, (GST_VC1_BFRACTION_BASIS * 3) / 5 },
-        {  8, (GST_VC1_BFRACTION_BASIS * 4) / 5 },
-        {  9,  GST_VC1_BFRACTION_BASIS      / 6 },
-        { 10, (GST_VC1_BFRACTION_BASIS * 5) / 6 },
-        { 11,  GST_VC1_BFRACTION_BASIS      / 7 },
-        { 12, (GST_VC1_BFRACTION_BASIS * 2) / 7 },
-        { 13, (GST_VC1_BFRACTION_BASIS * 3) / 7 },
-        { 14, (GST_VC1_BFRACTION_BASIS * 4) / 7 },
-        { 15, (GST_VC1_BFRACTION_BASIS * 5) / 7 },
-        { 16, (GST_VC1_BFRACTION_BASIS * 6) / 7 },
-        { 17,  GST_VC1_BFRACTION_BASIS      / 8 },
-        { 18, (GST_VC1_BFRACTION_BASIS * 3) / 8 },
-        { 19, (GST_VC1_BFRACTION_BASIS * 5) / 8 },
-        { 20, (GST_VC1_BFRACTION_BASIS * 7) / 8 },
-        { 21,  GST_VC1_BFRACTION_RESERVED },
-        { 22,  GST_VC1_BFRACTION_PTYPE_BI }
+        {  0,  VAPL_VC1_BFRACTION_BASIS      / 2 },
+        {  1,  VAPL_VC1_BFRACTION_BASIS      / 3 },
+        {  2, (VAPL_VC1_BFRACTION_BASIS * 2) / 3 },
+        {  3,  VAPL_VC1_BFRACTION_BASIS      / 4 },
+        {  4, (VAPL_VC1_BFRACTION_BASIS * 3) / 4 },
+        {  5,  VAPL_VC1_BFRACTION_BASIS      / 5 },
+        {  6, (VAPL_VC1_BFRACTION_BASIS * 2) / 5 },
+        {  7, (VAPL_VC1_BFRACTION_BASIS * 3) / 5 },
+        {  8, (VAPL_VC1_BFRACTION_BASIS * 4) / 5 },
+        {  9,  VAPL_VC1_BFRACTION_BASIS      / 6 },
+        { 10, (VAPL_VC1_BFRACTION_BASIS * 5) / 6 },
+        { 11,  VAPL_VC1_BFRACTION_BASIS      / 7 },
+        { 12, (VAPL_VC1_BFRACTION_BASIS * 2) / 7 },
+        { 13, (VAPL_VC1_BFRACTION_BASIS * 3) / 7 },
+        { 14, (VAPL_VC1_BFRACTION_BASIS * 4) / 7 },
+        { 15, (VAPL_VC1_BFRACTION_BASIS * 5) / 7 },
+        { 16, (VAPL_VC1_BFRACTION_BASIS * 6) / 7 },
+        { 17,  VAPL_VC1_BFRACTION_BASIS      / 8 },
+        { 18, (VAPL_VC1_BFRACTION_BASIS * 3) / 8 },
+        { 19, (VAPL_VC1_BFRACTION_BASIS * 5) / 8 },
+        { 20, (VAPL_VC1_BFRACTION_BASIS * 7) / 8 },
+        { 21,  VAPL_VC1_BFRACTION_RESERVED },
+        { 22,  VAPL_VC1_BFRACTION_PTYPE_BI }
     };
 
     if (!bfraction)
@@ -479,39 +479,39 @@ static guint
 get_VAMvModeVC1(guint mvmode)
 {
     switch (mvmode) {
-    case GST_VC1_MVMODE_1MV_HPEL_BILINEAR: return VAMvMode1MvHalfPelBilinear;
-    case GST_VC1_MVMODE_1MV:               return VAMvMode1Mv;
-    case GST_VC1_MVMODE_1MV_HPEL:          return VAMvMode1MvHalfPel;
-    case GST_VC1_MVMODE_MIXED_MV:          return VAMvModeMixedMv;
-    case GST_VC1_MVMODE_INTENSITY_COMP:    return VAMvModeIntensityCompensation;
+    case VAPL_VC1_MVMODE_1MV_HPEL_BILINEAR: return VAMvMode1MvHalfPelBilinear;
+    case VAPL_VC1_MVMODE_1MV:               return VAMvMode1Mv;
+    case VAPL_VC1_MVMODE_1MV_HPEL:          return VAMvMode1MvHalfPel;
+    case VAPL_VC1_MVMODE_MIXED_MV:          return VAMvModeMixedMv;
+    case VAPL_VC1_MVMODE_INTENSITY_COMP:    return VAMvModeIntensityCompensation;
     }
     return 0;
 }
 
 /* Reconstruct bitstream MVMODE (7.1.1.32) */
 static guint
-get_MVMODE(GstVC1FrameHdr *frame_hdr)
+get_MVMODE(VaplVc1FrameHdr *frame_hdr)
 {
     guint mvmode;
 
-    if (frame_hdr->profile == GST_VC1_PROFILE_ADVANCED)
+    if (frame_hdr->profile == VAPL_VC1_PROFILE_ADVANCED)
         mvmode = frame_hdr->pic.advanced.mvmode;
     else
         mvmode = frame_hdr->pic.simple.mvmode;
 
-    if (frame_hdr->ptype == GST_VC1_PICTURE_TYPE_P ||
-        frame_hdr->ptype == GST_VC1_PICTURE_TYPE_B)
+    if (frame_hdr->ptype == VAPL_VC1_PICTURE_TYPE_P ||
+        frame_hdr->ptype == VAPL_VC1_PICTURE_TYPE_B)
         return get_VAMvModeVC1(mvmode);
     return 0;
 }
 
 /* Reconstruct bitstream MVMODE2 (7.1.1.33) */
 static guint
-get_MVMODE2(GstVC1FrameHdr *frame_hdr)
+get_MVMODE2(VaplVc1FrameHdr *frame_hdr)
 {
     guint mvmode, mvmode2;
 
-    if (frame_hdr->profile == GST_VC1_PROFILE_ADVANCED) {
+    if (frame_hdr->profile == VAPL_VC1_PROFILE_ADVANCED) {
         mvmode  = frame_hdr->pic.advanced.mvmode;
         mvmode2 = frame_hdr->pic.advanced.mvmode2;
     }
@@ -520,8 +520,8 @@ get_MVMODE2(GstVC1FrameHdr *frame_hdr)
         mvmode2 = frame_hdr->pic.simple.mvmode2;
     }
 
-    if (frame_hdr->ptype == GST_VC1_PICTURE_TYPE_P &&
-        mvmode == GST_VC1_MVMODE_INTENSITY_COMP)
+    if (frame_hdr->ptype == VAPL_VC1_PICTURE_TYPE_P &&
+        mvmode == VAPL_VC1_MVMODE_INTENSITY_COMP)
         return get_VAMvModeVC1(mvmode2);
     return 0;
 }
@@ -530,104 +530,104 @@ static inline int
 has_MVTYPEMB_bitplane(GstVaapiDecoderVC1 *decoder)
 {
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
-    GstVC1SeqHdr * const seq_hdr = &priv->seq_hdr;
-    GstVC1FrameHdr * const frame_hdr = &priv->frame_hdr;
+    VaplVc1SeqHdr * const seq_hdr = &priv->seq_hdr;
+    VaplVc1FrameHdr * const frame_hdr = &priv->frame_hdr;
     guint mvmode, mvmode2;
 
-    if (seq_hdr->profile == GST_VC1_PROFILE_ADVANCED) {
-        GstVC1PicAdvanced * const pic = &frame_hdr->pic.advanced;
+    if (seq_hdr->profile == VAPL_VC1_PROFILE_ADVANCED) {
+        VaplVc1PicAdvanced * const pic = &frame_hdr->pic.advanced;
         if (pic->mvtypemb)
             return 0;
         mvmode  = pic->mvmode;
         mvmode2 = pic->mvmode2;
     }
     else {
-        GstVC1PicSimpleMain * const pic = &frame_hdr->pic.simple;
+        VaplVc1PicSimpleMain * const pic = &frame_hdr->pic.simple;
         if (pic->mvtypemb)
             return 0;
         mvmode  = pic->mvmode;
         mvmode2 = pic->mvmode2;
     }
-    return (frame_hdr->ptype == GST_VC1_PICTURE_TYPE_P &&
-            (mvmode == GST_VC1_MVMODE_MIXED_MV ||
-             (mvmode == GST_VC1_MVMODE_INTENSITY_COMP &&
-              mvmode2 == GST_VC1_MVMODE_MIXED_MV)));
+    return (frame_hdr->ptype == VAPL_VC1_PICTURE_TYPE_P &&
+            (mvmode == VAPL_VC1_MVMODE_MIXED_MV ||
+             (mvmode == VAPL_VC1_MVMODE_INTENSITY_COMP &&
+              mvmode2 == VAPL_VC1_MVMODE_MIXED_MV)));
 }
 
 static inline int
 has_SKIPMB_bitplane(GstVaapiDecoderVC1 *decoder)
 {
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
-    GstVC1SeqHdr * const seq_hdr = &priv->seq_hdr;
-    GstVC1FrameHdr * const frame_hdr = &priv->frame_hdr;
+    VaplVc1SeqHdr * const seq_hdr = &priv->seq_hdr;
+    VaplVc1FrameHdr * const frame_hdr = &priv->frame_hdr;
 
-    if (seq_hdr->profile == GST_VC1_PROFILE_ADVANCED) {
-        GstVC1PicAdvanced * const pic = &frame_hdr->pic.advanced;
+    if (seq_hdr->profile == VAPL_VC1_PROFILE_ADVANCED) {
+        VaplVc1PicAdvanced * const pic = &frame_hdr->pic.advanced;
         if (pic->skipmb)
             return 0;
     }
     else {
-        GstVC1PicSimpleMain * const pic = &frame_hdr->pic.simple;
+        VaplVc1PicSimpleMain * const pic = &frame_hdr->pic.simple;
         if (pic->skipmb)
             return 0;
     }
-    return (frame_hdr->ptype == GST_VC1_PICTURE_TYPE_P ||
-            frame_hdr->ptype == GST_VC1_PICTURE_TYPE_B);
+    return (frame_hdr->ptype == VAPL_VC1_PICTURE_TYPE_P ||
+            frame_hdr->ptype == VAPL_VC1_PICTURE_TYPE_B);
 }
 
 static inline int
 has_DIRECTMB_bitplane(GstVaapiDecoderVC1 *decoder)
 {
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
-    GstVC1SeqHdr * const seq_hdr = &priv->seq_hdr;
-    GstVC1FrameHdr * const frame_hdr = &priv->frame_hdr;
+    VaplVc1SeqHdr * const seq_hdr = &priv->seq_hdr;
+    VaplVc1FrameHdr * const frame_hdr = &priv->frame_hdr;
 
-    if (seq_hdr->profile == GST_VC1_PROFILE_ADVANCED) {
-        GstVC1PicAdvanced * const pic = &frame_hdr->pic.advanced;
+    if (seq_hdr->profile == VAPL_VC1_PROFILE_ADVANCED) {
+        VaplVc1PicAdvanced * const pic = &frame_hdr->pic.advanced;
         if (pic->directmb)
             return 0;
     }
     else {
-        GstVC1PicSimpleMain * const pic = &frame_hdr->pic.simple;
+        VaplVc1PicSimpleMain * const pic = &frame_hdr->pic.simple;
         if (pic->directmb)
             return 0;
     }
-    return frame_hdr->ptype == GST_VC1_PICTURE_TYPE_B;
+    return frame_hdr->ptype == VAPL_VC1_PICTURE_TYPE_B;
 }
 
 static inline int
 has_ACPRED_bitplane(GstVaapiDecoderVC1 *decoder)
 {
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
-    GstVC1SeqHdr * const seq_hdr = &priv->seq_hdr;
-    GstVC1FrameHdr * const frame_hdr = &priv->frame_hdr;
-    GstVC1PicAdvanced * const pic = &frame_hdr->pic.advanced;
+    VaplVc1SeqHdr * const seq_hdr = &priv->seq_hdr;
+    VaplVc1FrameHdr * const frame_hdr = &priv->frame_hdr;
+    VaplVc1PicAdvanced * const pic = &frame_hdr->pic.advanced;
 
-    if (seq_hdr->profile != GST_VC1_PROFILE_ADVANCED)
+    if (seq_hdr->profile != VAPL_VC1_PROFILE_ADVANCED)
         return 0;
     if (pic->acpred)
         return 0;
-    return (frame_hdr->ptype == GST_VC1_PICTURE_TYPE_I ||
-            frame_hdr->ptype == GST_VC1_PICTURE_TYPE_BI);
+    return (frame_hdr->ptype == VAPL_VC1_PICTURE_TYPE_I ||
+            frame_hdr->ptype == VAPL_VC1_PICTURE_TYPE_BI);
 }
 
 static inline int
 has_OVERFLAGS_bitplane(GstVaapiDecoderVC1 *decoder)
 {
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
-    GstVC1SeqHdr * const seq_hdr = &priv->seq_hdr;
-    GstVC1EntryPointHdr * const entrypoint_hdr = &priv->entrypoint_hdr;
-    GstVC1FrameHdr * const frame_hdr = &priv->frame_hdr;
-    GstVC1PicAdvanced * const pic = &frame_hdr->pic.advanced;
+    VaplVc1SeqHdr * const seq_hdr = &priv->seq_hdr;
+    VaplVc1EntryPointHdr * const entrypoint_hdr = &priv->entrypoint_hdr;
+    VaplVc1FrameHdr * const frame_hdr = &priv->frame_hdr;
+    VaplVc1PicAdvanced * const pic = &frame_hdr->pic.advanced;
 
-    if (seq_hdr->profile != GST_VC1_PROFILE_ADVANCED)
+    if (seq_hdr->profile != VAPL_VC1_PROFILE_ADVANCED)
         return 0;
     if (pic->overflags)
         return 0;
-    return ((frame_hdr->ptype == GST_VC1_PICTURE_TYPE_I ||
-             frame_hdr->ptype == GST_VC1_PICTURE_TYPE_BI) &&
+    return ((frame_hdr->ptype == VAPL_VC1_PICTURE_TYPE_I ||
+             frame_hdr->ptype == VAPL_VC1_PICTURE_TYPE_BI) &&
             (entrypoint_hdr->overlap && frame_hdr->pquant <= 8) &&
-            pic->condover == GST_VC1_CONDOVER_SELECT);
+            pic->condover == VAPL_VC1_CONDOVER_SELECT);
 }
 
 static inline void
@@ -651,9 +651,9 @@ fill_picture_structc(GstVaapiDecoderVC1 *decoder, GstVaapiPicture *picture)
 {
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
     VAPictureParameterBufferVC1 * const pic_param = picture->param;
-    GstVC1SeqStructC * const structc = &priv->seq_hdr.struct_c;
-    GstVC1FrameHdr * const frame_hdr = &priv->frame_hdr;
-    GstVC1PicSimpleMain * const pic = &frame_hdr->pic.simple;
+    VaplVc1SeqStructC * const structc = &priv->seq_hdr.struct_c;
+    VaplVc1FrameHdr * const frame_hdr = &priv->frame_hdr;
+    VaplVc1PicSimpleMain * const pic = &frame_hdr->pic.simple;
 
     /* Fill in VAPictureParameterBufferVC1 (simple/main profile bits) */
     pic_param->sequence_fields.bits.finterpflag                     = structc->finterpflag;
@@ -694,10 +694,10 @@ fill_picture_advanced(GstVaapiDecoderVC1 *decoder, GstVaapiPicture *picture)
 {
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
     VAPictureParameterBufferVC1 * const pic_param = picture->param;
-    GstVC1AdvancedSeqHdr * const adv_hdr = &priv->seq_hdr.advanced;
-    GstVC1EntryPointHdr * const entrypoint_hdr = &priv->entrypoint_hdr;
-    GstVC1FrameHdr * const frame_hdr = &priv->frame_hdr;
-    GstVC1PicAdvanced * const pic = &frame_hdr->pic.advanced;
+    VaplVc1AdvancedSeqHdr * const adv_hdr = &priv->seq_hdr.advanced;
+    VaplVc1EntryPointHdr * const entrypoint_hdr = &priv->entrypoint_hdr;
+    VaplVc1FrameHdr * const frame_hdr = &priv->frame_hdr;
+    VaplVc1PicAdvanced * const pic = &frame_hdr->pic.advanced;
 
     if (!priv->has_entrypoint)
         return FALSE;
@@ -731,7 +731,7 @@ fill_picture_advanced(GstVaapiDecoderVC1 *decoder, GstVaapiPicture *picture)
     pic_param->picture_fields.bits.frame_coding_mode                = pic->fcm;
     pic_param->picture_fields.bits.top_field_first                  = pic->tff;
     pic_param->picture_fields.bits.is_first_field                   = pic->fcm == 0; /* XXX: interlaced frame */
-    pic_param->picture_fields.bits.intensity_compensation           = pic->mvmode == GST_VC1_MVMODE_INTENSITY_COMP;
+    pic_param->picture_fields.bits.intensity_compensation           = pic->mvmode == VAPL_VC1_MVMODE_INTENSITY_COMP;
     pic_param->raw_coding.flags.mv_type_mb                          = pic->mvtypemb;
     pic_param->raw_coding.flags.direct_mb                           = pic->directmb;
     pic_param->raw_coding.flags.skip_mb                             = pic->skipmb;
@@ -761,9 +761,9 @@ fill_picture(GstVaapiDecoderVC1 *decoder, GstVaapiPicture *picture)
 {
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
     VAPictureParameterBufferVC1 * const pic_param = picture->param;
-    GstVC1SeqHdr * const seq_hdr = &priv->seq_hdr;
-    GstVC1FrameHdr * const frame_hdr = &priv->frame_hdr;
-    GstVC1VopDquant * const vopdquant = &frame_hdr->vopdquant;
+    VaplVc1SeqHdr * const seq_hdr = &priv->seq_hdr;
+    VaplVc1FrameHdr * const frame_hdr = &priv->frame_hdr;
+    VaplVc1VopDquant * const vopdquant = &frame_hdr->vopdquant;
     GstVaapiPicture *prev_picture, *next_picture;
 
     /* Fill in VAPictureParameterBufferVC1 (common fields) */
@@ -792,15 +792,15 @@ fill_picture(GstVaapiDecoderVC1 *decoder, GstVaapiPicture *picture)
     pic_param->pic_quantizer_fields.bits.pic_quantizer_type         = frame_hdr->pquantizer;
     pic_param->pic_quantizer_fields.bits.dq_frame                   = vopdquant->dquantfrm;
     pic_param->pic_quantizer_fields.bits.dq_profile                 = vopdquant->dqprofile;
-    pic_param->pic_quantizer_fields.bits.dq_sb_edge                 = vopdquant->dqprofile == GST_VC1_DQPROFILE_SINGLE_EDGE ? vopdquant->dqbedge : 0;
-    pic_param->pic_quantizer_fields.bits.dq_db_edge                 = vopdquant->dqprofile == GST_VC1_DQPROFILE_DOUBLE_EDGES ? vopdquant->dqbedge : 0;
+    pic_param->pic_quantizer_fields.bits.dq_sb_edge                 = vopdquant->dqprofile == VAPL_VC1_DQPROFILE_SINGLE_EDGE ? vopdquant->dqbedge : 0;
+    pic_param->pic_quantizer_fields.bits.dq_db_edge                 = vopdquant->dqprofile == VAPL_VC1_DQPROFILE_DOUBLE_EDGES ? vopdquant->dqbedge : 0;
     pic_param->pic_quantizer_fields.bits.dq_binary_level            = vopdquant->dqbilevel;
     pic_param->pic_quantizer_fields.bits.alt_pic_quantizer          = vopdquant->altpquant;
     pic_param->transform_fields.value                               = 0;
     pic_param->transform_fields.bits.transform_ac_codingset_idx1    = frame_hdr->transacfrm;
     pic_param->transform_fields.bits.intra_transform_dc_table       = frame_hdr->transdctab;
 
-    if (seq_hdr->profile == GST_VC1_PROFILE_ADVANCED) {
+    if (seq_hdr->profile == VAPL_VC1_PROFILE_ADVANCED) {
         if (!fill_picture_advanced(decoder, picture))
             return FALSE;
     }
@@ -875,7 +875,7 @@ fill_picture(GstVaapiDecoderVC1 *decoder, GstVaapiPicture *picture)
 }
 
 static GstVaapiDecoderStatus
-decode_slice_chunk(GstVaapiDecoderVC1 *decoder, GstVC1BDU *ebdu,
+decode_slice_chunk(GstVaapiDecoderVC1 *decoder, VaplVc1BDU *ebdu,
     guint slice_addr, guint header_size)
 {
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
@@ -901,40 +901,40 @@ decode_slice_chunk(GstVaapiDecoderVC1 *decoder, GstVC1BDU *ebdu,
 }
 
 static GstVaapiDecoderStatus
-decode_frame(GstVaapiDecoderVC1 *decoder, GstVC1BDU *rbdu, GstVC1BDU *ebdu)
+decode_frame(GstVaapiDecoderVC1 *decoder, VaplVc1BDU *rbdu, VaplVc1BDU *ebdu)
 {
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
-    GstVC1FrameHdr * const frame_hdr = &priv->frame_hdr;
-    GstVC1ParserResult result;
+    VaplVc1FrameHdr * const frame_hdr = &priv->frame_hdr;
+    VaplVc1ParserResult result;
     GstVaapiPicture * const picture = priv->current_picture;
 
     memset(frame_hdr, 0, sizeof(*frame_hdr));
-    result = gst_vc1_parse_frame_header(
+    result = vapl_vc1_parse_frame_header(
         rbdu->data + rbdu->offset,
         rbdu->size,
         frame_hdr,
         &priv->seq_hdr,
         priv->bitplanes
     );
-    if (result != GST_VC1_PARSER_OK) {
+    if (result != VAPL_VC1_PARSER_OK) {
         GST_ERROR("failed to parse frame layer");
         return get_status(result);
     }
 
     switch (frame_hdr->ptype) {
-    case GST_VC1_PICTURE_TYPE_I:
+    case VAPL_VC1_PICTURE_TYPE_I:
         picture->type   = GST_VAAPI_PICTURE_TYPE_I;
         GST_VAAPI_PICTURE_FLAG_SET(picture, GST_VAAPI_PICTURE_FLAG_REFERENCE);
         break;
-    case GST_VC1_PICTURE_TYPE_SKIPPED:
-    case GST_VC1_PICTURE_TYPE_P:
+    case VAPL_VC1_PICTURE_TYPE_SKIPPED:
+    case VAPL_VC1_PICTURE_TYPE_P:
         picture->type   = GST_VAAPI_PICTURE_TYPE_P;
         GST_VAAPI_PICTURE_FLAG_SET(picture, GST_VAAPI_PICTURE_FLAG_REFERENCE);
         break;
-    case GST_VC1_PICTURE_TYPE_B:
+    case VAPL_VC1_PICTURE_TYPE_B:
         picture->type   = GST_VAAPI_PICTURE_TYPE_B;
         break;
-    case GST_VC1_PICTURE_TYPE_BI:
+    case VAPL_VC1_PICTURE_TYPE_BI:
         picture->type   = GST_VAAPI_PICTURE_TYPE_BI;
         break;
     default:
@@ -963,20 +963,20 @@ decode_frame(GstVaapiDecoderVC1 *decoder, GstVC1BDU *rbdu, GstVC1BDU *ebdu)
 }
 
 static GstVaapiDecoderStatus
-decode_slice(GstVaapiDecoderVC1 *decoder, GstVC1BDU *rbdu, GstVC1BDU *ebdu)
+decode_slice(GstVaapiDecoderVC1 *decoder, VaplVc1BDU *rbdu, VaplVc1BDU *ebdu)
 {
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
-    GstVC1SliceHdr slice_hdr;
-    GstVC1ParserResult result;
+    VaplVc1SliceHdr slice_hdr;
+    VaplVc1ParserResult result;
 
     memset(&slice_hdr, 0, sizeof(slice_hdr));
-    result = gst_vc1_parse_slice_header(
+    result = vapl_vc1_parse_slice_header(
         rbdu->data + rbdu->offset,
         rbdu->size,
         &slice_hdr,
         &priv->seq_hdr
     );
-    if (result != GST_VC1_PARSER_OK) {
+    if (result != VAPL_VC1_PARSER_OK) {
         GST_ERROR("failed to parse slice layer");
         return get_status(result);
     }
@@ -985,7 +985,7 @@ decode_slice(GstVaapiDecoderVC1 *decoder, GstVC1BDU *rbdu, GstVC1BDU *ebdu)
 }
 
 static gboolean
-decode_rbdu(GstVaapiDecoderVC1 *decoder, GstVC1BDU *rbdu, GstVC1BDU *ebdu)
+decode_rbdu(GstVaapiDecoderVC1 *decoder, VaplVc1BDU *rbdu, VaplVc1BDU *ebdu)
 {
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
     guint8 *rbdu_buffer;
@@ -1036,28 +1036,28 @@ decode_rbdu(GstVaapiDecoderVC1 *decoder, GstVC1BDU *rbdu, GstVC1BDU *ebdu)
 }
 
 static GstVaapiDecoderStatus
-decode_ebdu(GstVaapiDecoderVC1 *decoder, GstVC1BDU *ebdu)
+decode_ebdu(GstVaapiDecoderVC1 *decoder, VaplVc1BDU *ebdu)
 {
     GstVaapiDecoderStatus status;
-    GstVC1BDU rbdu;
+    VaplVc1BDU rbdu;
 
     if (!decode_rbdu(decoder, &rbdu, ebdu))
         return GST_VAAPI_DECODER_STATUS_ERROR_ALLOCATION_FAILED;
 
     switch (ebdu->type) {
-    case GST_VC1_SEQUENCE:
+    case VAPL_VC1_SEQUENCE:
         status = decode_sequence(decoder, &rbdu, ebdu);
         break;
-    case GST_VC1_ENTRYPOINT:
+    case VAPL_VC1_ENTRYPOINT:
         status = decode_entry_point(decoder, &rbdu, ebdu);
         break;
-    case GST_VC1_FRAME:
+    case VAPL_VC1_FRAME:
         status = decode_frame(decoder, &rbdu, ebdu);
         break;
-    case GST_VC1_SLICE:
+    case VAPL_VC1_SLICE:
         status = decode_slice(decoder, &rbdu, ebdu);
         break;
-    case GST_VC1_END_OF_SEQ:
+    case VAPL_VC1_END_OF_SEQ:
         status = decode_sequence_end(decoder);
         break;
     default:
@@ -1072,10 +1072,10 @@ static GstVaapiDecoderStatus
 decode_buffer(GstVaapiDecoderVC1 *decoder, guchar *buf, guint buf_size)
 {
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
-    GstVC1BDU ebdu;
+    VaplVc1BDU ebdu;
 
     if (priv->has_codec_data) {
-        ebdu.type      = GST_VC1_FRAME;
+        ebdu.type      = VAPL_VC1_FRAME;
         ebdu.sc_offset = 0;
         ebdu.offset    = 0;
     }
@@ -1096,10 +1096,10 @@ gst_vaapi_decoder_vc1_decode_codec_data(GstVaapiDecoder *base_decoder,
     GstVaapiDecoderVC1 * const decoder =
         GST_VAAPI_DECODER_VC1_CAST(base_decoder);
     GstVaapiDecoderVC1Private * const priv = &decoder->priv;
-    GstVC1SeqHdr * const seq_hdr = &priv->seq_hdr;
+    VaplVc1SeqHdr * const seq_hdr = &priv->seq_hdr;
     GstVaapiDecoderStatus status;
-    GstVC1ParserResult result;
-    GstVC1BDU ebdu;
+    VaplVc1ParserResult result;
+    VaplVc1BDU ebdu;
     GstCaps *caps;
     GstStructure *structure;
     guint ofs;
@@ -1135,7 +1135,7 @@ gst_vaapi_decoder_vc1_decode_codec_data(GstVaapiDecoder *base_decoder,
     if (format == GST_MAKE_FOURCC('W','M','V','3')) {
         seq_hdr->struct_c.coded_width  = width;
         seq_hdr->struct_c.coded_height = height;
-        ebdu.type      = GST_VC1_SEQUENCE;
+        ebdu.type      = VAPL_VC1_SEQUENCE;
         ebdu.size      = buf_size;
         ebdu.sc_offset = 0;
         ebdu.offset    = 0;
@@ -1151,18 +1151,18 @@ gst_vaapi_decoder_vc1_decode_codec_data(GstVaapiDecoder *base_decoder,
 
     ofs = 0;
     do {
-        result = gst_vc1_identify_next_bdu(
+        result = vapl_vc1_identify_next_bdu(
             buf + ofs,
             buf_size - ofs,
             &ebdu
         );
 
         switch (result) {
-        case GST_VC1_PARSER_NO_BDU_END:
+        case VAPL_VC1_PARSER_NO_BDU_END:
             /* Assume the EBDU is complete within codec-data bounds */
             ebdu.size = buf_size - ofs - ebdu.offset;
             // fall-through
-        case GST_VC1_PARSER_OK:
+        case VAPL_VC1_PARSER_OK:
             status = decode_ebdu(decoder, &ebdu);
             ofs += ebdu.offset + ebdu.size;
             break;
@@ -1223,7 +1223,7 @@ gst_vaapi_decoder_vc1_parse(GstVaapiDecoder *base_decoder,
         if (size < 1)
             return GST_VAAPI_DECODER_STATUS_ERROR_NO_DATA;
         buf_size = size;
-        bdu_type = GST_VC1_FRAME;
+        bdu_type = VAPL_VC1_FRAME;
     }
     else {
         if (size < 4)
@@ -1251,19 +1251,19 @@ gst_vaapi_decoder_vc1_parse(GstVaapiDecoder *base_decoder,
 
     /* Check for new picture layer */
     switch (bdu_type) {
-    case GST_VC1_END_OF_SEQ:
+    case VAPL_VC1_END_OF_SEQ:
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_FRAME_END;
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_STREAM_END;
         break;
-    case GST_VC1_SEQUENCE:
-    case GST_VC1_ENTRYPOINT:
+    case VAPL_VC1_SEQUENCE:
+    case VAPL_VC1_ENTRYPOINT:
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_FRAME_START;
         break;
-    case GST_VC1_FRAME:
+    case VAPL_VC1_FRAME:
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_FRAME_START;
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_SLICE;
         break;
-    case GST_VC1_SLICE:
+    case VAPL_VC1_SLICE:
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_SLICE;
         break;
     }
@@ -1324,7 +1324,7 @@ gst_vaapi_decoder_vc1_start_frame(GstVaapiDecoder *base_decoder,
 
     /* Update cropping rectangle */
     do {
-        GstVC1AdvancedSeqHdr *adv_hdr;
+        VaplVc1AdvancedSeqHdr *adv_hdr;
         GstVaapiRectangle crop_rect;
 
         if (priv->profile != GST_VAAPI_PROFILE_VC1_ADVANCED)
@@ -1342,7 +1342,7 @@ gst_vaapi_decoder_vc1_start_frame(GstVaapiDecoder *base_decoder,
             gst_vaapi_picture_set_crop_rect(picture, &crop_rect);
     } while (0);
 
-    if (!gst_vc1_bitplanes_ensure_size(priv->bitplanes, &priv->seq_hdr)) {
+    if (!vapl_vc1_bitplanes_ensure_size(priv->bitplanes, &priv->seq_hdr)) {
         GST_ERROR("failed to allocate bitplanes");
         return GST_VAAPI_DECODER_STATUS_ERROR_ALLOCATION_FAILED;
     }

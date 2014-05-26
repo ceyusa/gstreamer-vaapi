@@ -21,7 +21,7 @@
  */
 
 #include "sysdeps.h"
-#include <vapl/gstmpegvideoparser.h>
+#include <vapl/vapl_mpegvideo_parser.h>
 #include "gstvaapiutils_mpeg2_priv.h"
 
 struct map
@@ -113,13 +113,13 @@ gst_vaapi_utils_mpeg2_get_profile (guint8 profile_idc)
   GstVaapiProfile profile;
 
   switch (profile_idc) {
-    case GST_MPEG_VIDEO_PROFILE_SIMPLE:
+    case VAPL_MPEG_VIDEO_PROFILE_SIMPLE:
       profile = GST_VAAPI_PROFILE_MPEG2_SIMPLE;
       break;
-    case GST_MPEG_VIDEO_PROFILE_MAIN:
+    case VAPL_MPEG_VIDEO_PROFILE_MAIN:
       profile = GST_VAAPI_PROFILE_MPEG2_MAIN;
       break;
-    case GST_MPEG_VIDEO_PROFILE_HIGH:
+    case VAPL_MPEG_VIDEO_PROFILE_HIGH:
       profile = GST_VAAPI_PROFILE_MPEG2_HIGH;
       break;
     default:
@@ -138,13 +138,13 @@ gst_vaapi_utils_mpeg2_get_profile_idc (GstVaapiProfile profile)
 
   switch (profile) {
     case GST_VAAPI_PROFILE_MPEG2_SIMPLE:
-      profile_idc = GST_MPEG_VIDEO_PROFILE_SIMPLE;
+      profile_idc = VAPL_MPEG_VIDEO_PROFILE_SIMPLE;
       break;
     case GST_VAAPI_PROFILE_MPEG2_MAIN:
-      profile_idc = GST_MPEG_VIDEO_PROFILE_MAIN;
+      profile_idc = VAPL_MPEG_VIDEO_PROFILE_MAIN;
       break;
     case GST_VAAPI_PROFILE_MPEG2_HIGH:
-      profile_idc = GST_MPEG_VIDEO_PROFILE_HIGH;
+      profile_idc = VAPL_MPEG_VIDEO_PROFILE_HIGH;
       break;
     default:
       g_debug ("unsupported GstVaapiProfile value");
@@ -242,13 +242,13 @@ gst_vaapi_utils_mpeg2_get_chroma_type (guint chroma_format_idc)
   GstVaapiChromaType chroma_type;
 
   switch (chroma_format_idc) {
-    case GST_MPEG_VIDEO_CHROMA_420:
+    case VAPL_MPEG_VIDEO_CHROMA_420:
       chroma_type = GST_VAAPI_CHROMA_TYPE_YUV420;
       break;
-    case GST_MPEG_VIDEO_CHROMA_422:
+    case VAPL_MPEG_VIDEO_CHROMA_422:
       chroma_type = GST_VAAPI_CHROMA_TYPE_YUV422;
       break;
-    case GST_MPEG_VIDEO_CHROMA_444:
+    case VAPL_MPEG_VIDEO_CHROMA_444:
       chroma_type = GST_VAAPI_CHROMA_TYPE_YUV444;
       break;
     default:
@@ -267,13 +267,13 @@ gst_vaapi_utils_mpeg2_get_chroma_format_idc (GstVaapiChromaType chroma_type)
 
   switch (chroma_type) {
     case GST_VAAPI_CHROMA_TYPE_YUV420:
-      chroma_format_idc = GST_MPEG_VIDEO_CHROMA_420;
+      chroma_format_idc = VAPL_MPEG_VIDEO_CHROMA_420;
       break;
     case GST_VAAPI_CHROMA_TYPE_YUV422:
-      chroma_format_idc = GST_MPEG_VIDEO_CHROMA_422;
+      chroma_format_idc = VAPL_MPEG_VIDEO_CHROMA_422;
       break;
     case GST_VAAPI_CHROMA_TYPE_YUV444:
-      chroma_format_idc = GST_MPEG_VIDEO_CHROMA_444;
+      chroma_format_idc = VAPL_MPEG_VIDEO_CHROMA_444;
       break;
     default:
       g_debug ("unsupported GstVaapiChromaType value");

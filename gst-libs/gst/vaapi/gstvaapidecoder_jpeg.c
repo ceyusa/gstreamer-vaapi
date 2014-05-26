@@ -28,7 +28,7 @@
 
 #include "sysdeps.h"
 #include <string.h>
-#include <vapl/gstjpegparser.h>
+#include <vapl/vapl_jpeg_parser.h>
 #include "gstvaapicompat.h"
 #include "gstvaapidecoder_jpeg.h"
 #include "gstvaapidecoder_objects.h"
@@ -60,16 +60,16 @@ typedef enum  {
         GST_JPEG_VIDEO_STATE_GOT_SOI |
         GST_JPEG_VIDEO_STATE_GOT_SOF |
         GST_JPEG_VIDEO_STATE_GOT_SOS),
-} GstJpegVideoState;
+} VaplJpegVideoState;
 
 struct _GstVaapiDecoderJpegPrivate {
     GstVaapiProfile             profile;
     guint                       width;
     guint                       height;
     GstVaapiPicture            *current_picture;
-    GstJpegFrameHdr             frame_hdr;
-    GstJpegHuffmanTables        huf_tables;
-    GstJpegQuantTables          quant_tables;
+    VaplJpegFrameHdr            frame_hdr;
+    VaplJpegHuffmanTables       huf_tables;
+    VaplJpegQuantTables         quant_tables;
     guint                       mcu_restart;
     guint                       parser_state;
     guint                       decoder_state;
@@ -99,12 +99,12 @@ struct _GstVaapiDecoderJpegClass {
 };
 
 static inline void
-unit_set_marker_code(GstVaapiDecoderUnit *unit, GstJpegMarkerCode marker)
+unit_set_marker_code(GstVaapiDecoderUnit *unit, VaplJpegMarkerCode marker)
 {
     unit->parsed_info = GSIZE_TO_POINTER(marker);
 }
 
-static inline GstJpegMarkerCode
+static inline VaplJpegMarkerCode
 unit_get_marker_code(GstVaapiDecoderUnit *unit)
 {
     return GPOINTER_TO_SIZE(unit->parsed_info);
@@ -248,7 +248,7 @@ static gboolean
 fill_picture(
     GstVaapiDecoderJpeg *decoder, 
     GstVaapiPicture     *picture,
-    GstJpegFrameHdr     *frame_hdr
+    VaplJpegFrameHdr     *frame_hdr
 )
 {
     VAPictureParameterBufferJPEGBaseline * const pic_param = picture->param;
@@ -282,7 +282,7 @@ fill_quantization_table(GstVaapiDecoderJpeg *decoder, GstVaapiPicture *picture)
     guint i, j, num_tables;
 
     if (!VALID_STATE(decoder, GOT_IQ_TABLE))
-        gst_jpeg_get_default_quantization_tables(&priv->quant_tables);
+        vapl_jpeg_get_default_quantization_tables(&priv->quant_tables);
     
     picture->iq_matrix = GST_VAAPI_IQ_MATRIX_NEW(JPEGBaseline, decoder);
     if (!picture->iq_matrix) {
@@ -292,10 +292,10 @@ fill_quantization_table(GstVaapiDecoderJpeg *decoder, GstVaapiPicture *picture)
     iq_matrix = picture->iq_matrix->param;
 
     num_tables = MIN(G_N_ELEMENTS(iq_matrix->quantiser_table),
-                     GST_JPEG_MAX_QUANT_ELEMENTS);
+                     VAPL_JPEG_MAX_QUANT_ELEMENTS);
 
     for (i = 0; i < num_tables; i++) {
-        GstJpegQuantTable * const quant_table =
+        VaplJpegQuantTable * const quant_table =
             &priv->quant_tables.quant_tables[i];
 
         iq_matrix->load_quantiser_table[i] = quant_table->valid;
@@ -308,7 +308,7 @@ fill_quantization_table(GstVaapiDecoderJpeg *decoder, GstVaapiPicture *picture)
             return GST_VAAPI_DECODER_STATUS_ERROR_UNSUPPORTED_CHROMA_FORMAT;
         }
 
-        for (j = 0; j < GST_JPEG_MAX_QUANT_ELEMENTS; j++)
+        for (j = 0; j < VAPL_JPEG_MAX_QUANT_ELEMENTS; j++)
             iq_matrix->quantiser_table[i][j] = quant_table->quant_table[j];
         iq_matrix->load_quantiser_table[i] = 1;
         quant_table->valid = FALSE;
@@ -317,7 +317,7 @@ fill_quantization_table(GstVaapiDecoderJpeg *decoder, GstVaapiPicture *picture)
 }
 
 static gboolean
-huffman_tables_updated(const GstJpegHuffmanTables *huf_tables)
+huffman_tables_updated(const VaplJpegHuffmanTables *huf_tables)
 {
     guint i;
 
@@ -331,7 +331,7 @@ huffman_tables_updated(const GstJpegHuffmanTables *huf_tables)
 }
 
 static void
-huffman_tables_reset(GstJpegHuffmanTables *huf_tables)
+huffman_tables_reset(VaplJpegHuffmanTables *huf_tables)
 {
     guint i;
 
@@ -343,13 +343,13 @@ huffman_tables_reset(GstJpegHuffmanTables *huf_tables)
 
 static void
 fill_huffman_table(GstVaapiHuffmanTable *huf_table,
-    const GstJpegHuffmanTables *huf_tables)
+    const VaplJpegHuffmanTables *huf_tables)
 {
     VAHuffmanTableBufferJPEGBaseline * const huffman_table = huf_table->param;
     guint i, num_tables;
 
     num_tables = MIN(G_N_ELEMENTS(huffman_table->huffman_table),
-                     GST_JPEG_MAX_SCAN_COMPONENTS);
+                     VAPL_JPEG_MAX_SCAN_COMPONENTS);
 
     for (i = 0; i < num_tables; i++) {
         huffman_table->load_huffman_table[i] =
@@ -376,7 +376,7 @@ fill_huffman_table(GstVaapiHuffmanTable *huf_table,
 }
 
 static void
-get_max_sampling_factors(const GstJpegFrameHdr *frame_hdr,
+get_max_sampling_factors(const VaplJpegFrameHdr *frame_hdr,
     guint *h_max_ptr, guint *v_max_ptr)
 {
     guint h_max = frame_hdr->components[0].horizontal_factor;
@@ -384,7 +384,7 @@ get_max_sampling_factors(const GstJpegFrameHdr *frame_hdr,
     guint i;
 
     for (i = 1; i < frame_hdr->num_components; i++) {
-        const GstJpegFrameComponent * const fcp = &frame_hdr->components[i];
+        const VaplJpegFrameComponent * const fcp = &frame_hdr->components[i];
         if (h_max < fcp->horizontal_factor)
             h_max = fcp->horizontal_factor;
         if (v_max < fcp->vertical_factor)
@@ -397,13 +397,13 @@ get_max_sampling_factors(const GstJpegFrameHdr *frame_hdr,
         *v_max_ptr = v_max;
 }
 
-static const GstJpegFrameComponent *
-get_component(const GstJpegFrameHdr *frame_hdr, guint selector)
+static const VaplJpegFrameComponent *
+get_component(const VaplJpegFrameHdr *frame_hdr, guint selector)
 {
     guint i;
 
     for (i = 0; i < frame_hdr->num_components; i++) {
-        const GstJpegFrameComponent * const fcp = &frame_hdr->components[i];
+        const VaplJpegFrameComponent * const fcp = &frame_hdr->components[i];
         if (fcp->identifier == selector)
             return fcp;
     }
@@ -411,17 +411,17 @@ get_component(const GstJpegFrameHdr *frame_hdr, guint selector)
 }
 
 static GstVaapiDecoderStatus
-decode_picture(GstVaapiDecoderJpeg *decoder, GstJpegMarkerSegment *seg,
+decode_picture(GstVaapiDecoderJpeg *decoder, VaplJpegMarkerSegment *seg,
     const guchar *buf)
 {
     GstVaapiDecoderJpegPrivate * const priv = &decoder->priv;
-    GstJpegFrameHdr * const frame_hdr = &priv->frame_hdr;
+    VaplJpegFrameHdr * const frame_hdr = &priv->frame_hdr;
 
     if (!VALID_STATE(decoder, GOT_SOI))
         return GST_VAAPI_DECODER_STATUS_SUCCESS;
 
     switch (seg->marker) {
-    case GST_JPEG_MARKER_SOF_MIN:
+    case VAPL_JPEG_MARKER_SOF_MIN:
         priv->profile = GST_VAAPI_PROFILE_JPEG_BASELINE;
         break;
     default:
@@ -430,7 +430,7 @@ decode_picture(GstVaapiDecoderJpeg *decoder, GstJpegMarkerSegment *seg,
     }
 
     memset(frame_hdr, 0, sizeof(*frame_hdr));
-    if (!gst_jpeg_parse_frame_hdr(frame_hdr, buf + seg->offset, seg->size, 0)) {
+    if (!vapl_jpeg_parse_frame_hdr(frame_hdr, buf + seg->offset, seg->size, 0)) {
         GST_ERROR("failed to parse image");
         return GST_VAAPI_DECODER_STATUS_ERROR_BITSTREAM_PARSER;
     }
@@ -453,7 +453,7 @@ decode_huffman_table(
     if (!VALID_STATE(decoder, GOT_SOI))
         return GST_VAAPI_DECODER_STATUS_SUCCESS;
 
-    if (!gst_jpeg_parse_huffman_table(&priv->huf_tables, buf, buf_size, 0)) {
+    if (!vapl_jpeg_parse_huffman_table(&priv->huf_tables, buf, buf_size, 0)) {
         GST_ERROR("failed to parse Huffman table");
         return GST_VAAPI_DECODER_STATUS_ERROR_BITSTREAM_PARSER;
     }
@@ -474,7 +474,7 @@ decode_quant_table(
     if (!VALID_STATE(decoder, GOT_SOI))
         return GST_VAAPI_DECODER_STATUS_SUCCESS;
 
-    if (!gst_jpeg_parse_quant_table(&priv->quant_tables, buf, buf_size, 0)) {
+    if (!vapl_jpeg_parse_quant_table(&priv->quant_tables, buf, buf_size, 0)) {
         GST_ERROR("failed to parse quantization table");
         return GST_VAAPI_DECODER_STATUS_ERROR_BITSTREAM_PARSER;
     }
@@ -495,7 +495,7 @@ decode_restart_interval(
     if (!VALID_STATE(decoder, GOT_SOI))
         return GST_VAAPI_DECODER_STATUS_SUCCESS;
 
-    if (!gst_jpeg_parse_restart_interval(&priv->mcu_restart, buf, buf_size, 0)) {
+    if (!vapl_jpeg_parse_restart_interval(&priv->mcu_restart, buf, buf_size, 0)) {
         GST_ERROR("failed to parse restart interval");
         return GST_VAAPI_DECODER_STATUS_ERROR_BITSTREAM_PARSER;
     }
@@ -503,14 +503,14 @@ decode_restart_interval(
 }
 
 static GstVaapiDecoderStatus
-decode_scan(GstVaapiDecoderJpeg *decoder, GstJpegMarkerSegment *seg,
+decode_scan(GstVaapiDecoderJpeg *decoder, VaplJpegMarkerSegment *seg,
     const guchar *buf)
 {
     GstVaapiDecoderJpegPrivate * const priv = &decoder->priv;
     GstVaapiPicture * const picture = priv->current_picture;
     GstVaapiSlice *slice;
     VASliceParameterBufferJPEGBaseline *slice_param;
-    GstJpegScanHdr scan_hdr;
+    VaplJpegScanHdr scan_hdr;
     guint scan_hdr_size, scan_data_size;
     guint i, h_max, v_max, mcu_width, mcu_height;
 
@@ -521,7 +521,7 @@ decode_scan(GstVaapiDecoderJpeg *decoder, GstJpegMarkerSegment *seg,
     scan_data_size = seg->size - scan_hdr_size;
 
     memset(&scan_hdr, 0, sizeof(scan_hdr));
-    if (!gst_jpeg_parse_scan_hdr(&scan_hdr, buf + seg->offset, seg->size, 0)) {
+    if (!vapl_jpeg_parse_scan_hdr(&scan_hdr, buf + seg->offset, seg->size, 0)) {
         GST_ERROR("failed to parse scan header");
         return GST_VAAPI_DECODER_STATUS_ERROR_BITSTREAM_PARSER;
     }
@@ -535,7 +535,7 @@ decode_scan(GstVaapiDecoderJpeg *decoder, GstJpegMarkerSegment *seg,
     gst_vaapi_picture_add_slice(picture, slice);
 
     if (!VALID_STATE(decoder, GOT_HUF_TABLE))
-        gst_jpeg_get_default_huffman_tables(&priv->huf_tables);
+        vapl_jpeg_get_default_huffman_tables(&priv->huf_tables);
 
     // Update VA Huffman table if it changed for this scan
     if (huffman_tables_updated(&priv->huf_tables)) {
@@ -569,7 +569,7 @@ decode_scan(GstVaapiDecoderJpeg *decoder, GstJpegMarkerSegment *seg,
 
     if (scan_hdr.num_components == 1) { // Non-interleaved
         const guint Csj = slice_param->components[0].component_selector;
-        const GstJpegFrameComponent * const fcp =
+        const VaplJpegFrameComponent * const fcp =
             get_component(&priv->frame_hdr, Csj);
 
         if (!fcp || fcp->horizontal_factor == 0 || fcp->vertical_factor == 0) {
@@ -588,7 +588,7 @@ decode_scan(GstVaapiDecoderJpeg *decoder, GstJpegMarkerSegment *seg,
 }
 
 static GstVaapiDecoderStatus
-decode_segment(GstVaapiDecoderJpeg *decoder, GstJpegMarkerSegment *seg,
+decode_segment(GstVaapiDecoderJpeg *decoder, VaplJpegMarkerSegment *seg,
     const guchar *buf)
 {
     GstVaapiDecoderJpegPrivate * const priv = &decoder->priv;
@@ -597,33 +597,33 @@ decode_segment(GstVaapiDecoderJpeg *decoder, GstJpegMarkerSegment *seg,
     // Decode segment
     status = GST_VAAPI_DECODER_STATUS_SUCCESS;
     switch (seg->marker) {
-    case GST_JPEG_MARKER_SOI:
+    case VAPL_JPEG_MARKER_SOI:
         priv->mcu_restart = 0;
         priv->decoder_state |= GST_JPEG_VIDEO_STATE_GOT_SOI;
         break;
-    case GST_JPEG_MARKER_EOI:
+    case VAPL_JPEG_MARKER_EOI:
         priv->decoder_state = 0;
         break;
-    case GST_JPEG_MARKER_DAC:
+    case VAPL_JPEG_MARKER_DAC:
         GST_ERROR("unsupported arithmetic coding mode");
         status = GST_VAAPI_DECODER_STATUS_ERROR_UNSUPPORTED_PROFILE;
         break;
-    case GST_JPEG_MARKER_DHT:
+    case VAPL_JPEG_MARKER_DHT:
         status = decode_huffman_table(decoder, buf + seg->offset, seg->size);
         break;
-    case GST_JPEG_MARKER_DQT:
+    case VAPL_JPEG_MARKER_DQT:
         status = decode_quant_table(decoder, buf + seg->offset, seg->size);
         break;
-    case GST_JPEG_MARKER_DRI:
+    case VAPL_JPEG_MARKER_DRI:
         status = decode_restart_interval(decoder, buf + seg->offset, seg->size);
         break;
-    case GST_JPEG_MARKER_SOS:
+    case VAPL_JPEG_MARKER_SOS:
         status = decode_scan(decoder, seg, buf);
         break;
     default:
         // SOFn segments
-        if (seg->marker >= GST_JPEG_MARKER_SOF_MIN &&
-            seg->marker <= GST_JPEG_MARKER_SOF_MAX)
+        if (seg->marker >= VAPL_JPEG_MARKER_SOF_MIN &&
+            seg->marker <= VAPL_JPEG_MARKER_SOF_MAX)
             status = decode_picture(decoder, seg, buf);
         break;
     }
@@ -644,10 +644,10 @@ ensure_decoder(GstVaapiDecoderJpeg *decoder)
 }
 
 static gboolean
-is_scan_complete(GstJpegMarkerCode marker)
+is_scan_complete(VaplJpegMarkerCode marker)
 {
     // Scan is assumed to be complete when the new segment is not RSTi
-    return marker < GST_JPEG_MARKER_RST_MIN || marker > GST_JPEG_MARKER_RST_MAX;
+    return marker < VAPL_JPEG_MARKER_RST_MIN || marker > VAPL_JPEG_MARKER_RST_MAX;
 }
 
 static GstVaapiDecoderStatus
@@ -659,8 +659,8 @@ gst_vaapi_decoder_jpeg_parse(GstVaapiDecoder *base_decoder,
     GstVaapiDecoderJpegPrivate * const priv = &decoder->priv;
     GstVaapiParserState * const ps = GST_VAAPI_PARSER_STATE(base_decoder);
     GstVaapiDecoderStatus status;
-    GstJpegMarkerCode marker;
-    GstJpegMarkerSegment seg;
+    VaplJpegMarkerCode marker;
+    VaplJpegMarkerSegment seg;
     const guchar *buf;
     guint buf_size, flags;
     gint ofs1, ofs2;
@@ -684,7 +684,7 @@ gst_vaapi_decoder_jpeg_parse(GstVaapiDecoder *base_decoder,
 
     for (;;) {
         // Skip any garbage until we reach SOI, if needed
-        if (!gst_jpeg_parse(&seg, buf, buf_size, ofs1)) {
+        if (!vapl_jpeg_parse(&seg, buf, buf_size, ofs1)) {
             gst_adapter_unmap(adapter);
             ps->input_offset1 = buf_size;
             return GST_VAAPI_DECODER_STATUS_ERROR_NO_DATA;
@@ -692,16 +692,16 @@ gst_vaapi_decoder_jpeg_parse(GstVaapiDecoder *base_decoder,
         ofs1 = seg.offset;
 
         marker = seg.marker;
-        if (!VALID_STATE(parser, GOT_SOI) && marker != GST_JPEG_MARKER_SOI)
+        if (!VALID_STATE(parser, GOT_SOI) && marker != VAPL_JPEG_MARKER_SOI)
             continue;
-        if (marker == GST_JPEG_MARKER_SOS) {
+        if (marker == VAPL_JPEG_MARKER_SOS) {
             ofs2 = ps->input_offset2 - 2;
             if (ofs2 < ofs1 + seg.size)
                 ofs2 = ofs1 + seg.size;
 
             // Parse the whole scan + ECSs, including RSTi
             for (;;) {
-                if (!gst_jpeg_parse(&seg, buf, buf_size, ofs2)) {
+                if (!vapl_jpeg_parse(&seg, buf, buf_size, ofs2)) {
                     gst_adapter_unmap(adapter);
                     ps->input_offset1 = ofs1;
                     ps->input_offset2 = buf_size;
@@ -735,43 +735,43 @@ gst_vaapi_decoder_jpeg_parse(GstVaapiDecoder *base_decoder,
 
     flags = 0;
     switch (marker) {
-    case GST_JPEG_MARKER_SOI:
+    case VAPL_JPEG_MARKER_SOI:
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_FRAME_START;
         priv->parser_state |= GST_JPEG_VIDEO_STATE_GOT_SOI;
         break;
-    case GST_JPEG_MARKER_EOI:
+    case VAPL_JPEG_MARKER_EOI:
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_FRAME_END;
         priv->parser_state = 0;
         break;
-    case GST_JPEG_MARKER_SOS:
+    case VAPL_JPEG_MARKER_SOS:
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_SLICE;
         priv->parser_state |= GST_JPEG_VIDEO_STATE_GOT_SOS;
         break;
-    case GST_JPEG_MARKER_DAC:
-    case GST_JPEG_MARKER_DHT:
-    case GST_JPEG_MARKER_DQT:
+    case VAPL_JPEG_MARKER_DAC:
+    case VAPL_JPEG_MARKER_DHT:
+    case VAPL_JPEG_MARKER_DQT:
         if (priv->parser_state & GST_JPEG_VIDEO_STATE_GOT_SOF)
             flags |= GST_VAAPI_DECODER_UNIT_FLAG_SLICE;
         break;
-    case GST_JPEG_MARKER_DRI:
+    case VAPL_JPEG_MARKER_DRI:
         if (priv->parser_state & GST_JPEG_VIDEO_STATE_GOT_SOS)
             flags |= GST_VAAPI_DECODER_UNIT_FLAG_SLICE;
         break;
-    case GST_JPEG_MARKER_DNL:
+    case VAPL_JPEG_MARKER_DNL:
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_SLICE;
         break;
-    case GST_JPEG_MARKER_COM:
+    case VAPL_JPEG_MARKER_COM:
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_SKIP;
         break;
     default:
         /* SOFn segments */
-        if (marker >= GST_JPEG_MARKER_SOF_MIN &&
-            marker <= GST_JPEG_MARKER_SOF_MAX)
+        if (marker >= VAPL_JPEG_MARKER_SOF_MIN &&
+            marker <= VAPL_JPEG_MARKER_SOF_MAX)
             priv->parser_state |= GST_JPEG_VIDEO_STATE_GOT_SOF;
 
         /* Application segments */
-        else if (marker >= GST_JPEG_MARKER_APP_MIN &&
-                 marker <= GST_JPEG_MARKER_APP_MAX)
+        else if (marker >= VAPL_JPEG_MARKER_APP_MIN &&
+                 marker <= VAPL_JPEG_MARKER_APP_MAX)
             flags |= GST_VAAPI_DECODER_UNIT_FLAG_SKIP;
 
         /* Reserved */
@@ -790,7 +790,7 @@ gst_vaapi_decoder_jpeg_decode(GstVaapiDecoder *base_decoder,
     GstVaapiDecoderJpeg * const decoder =
         GST_VAAPI_DECODER_JPEG_CAST(base_decoder);
     GstVaapiDecoderStatus status;
-    GstJpegMarkerSegment seg;
+    VaplJpegMarkerSegment seg;
     GstBuffer * const buffer =
         GST_VAAPI_DECODER_CODEC_FRAME(decoder)->input_buffer;
     GstMapInfo map_info;

@@ -27,8 +27,8 @@
 
 #include "sysdeps.h"
 #include <string.h>
+#include <vapl/vapl_mpeg4_parser.h>
 #include <gst/base/gstbitreader.h>
-#include <vapl/gstmpeg4parser.h>
 #include "gstvaapidecoder_mpeg4.h"
 #include "gstvaapidecoder_objects.h"
 #include "gstvaapidecoder_priv.h"
@@ -52,14 +52,14 @@ struct _GstVaapiDecoderMpeg4Private {
     guint                           fps_n;
     guint                           fps_d; 
     guint                           coding_type;
-    GstMpeg4VisualObjectSequence    vos_hdr;
-    GstMpeg4VisualObject            vo_hdr;
-    GstMpeg4VideoSignalType         signal_type;
-    GstMpeg4VideoObjectLayer        vol_hdr;
-    GstMpeg4VideoObjectPlane        vop_hdr;
-    GstMpeg4VideoPlaneShortHdr      svh_hdr;
-    GstMpeg4VideoPacketHdr          packet_hdr;
-    GstMpeg4SpriteTrajectory        sprite_trajectory;
+    VaplMpeg4VisualObjectSequence   vos_hdr;
+    VaplMpeg4VisualObject           vo_hdr;
+    VaplMpeg4VideoSignalType        signal_type;
+    VaplMpeg4VideoObjectLayer       vol_hdr;
+    VaplMpeg4VideoObjectPlane       vop_hdr;
+    VaplMpeg4VideoPlaneShortHdr     svh_hdr;
+    VaplMpeg4VideoPacketHdr         packet_hdr;
+    VaplMpeg4SpriteTrajectory       sprite_trajectory;
     VAIQMatrixBufferMPEG4           iq_matrix;
     GstVaapiPicture                *curr_picture;
     // forward reference pic
@@ -309,21 +309,21 @@ static GstVaapiDecoderStatus
 decode_sequence(GstVaapiDecoderMpeg4 *decoder, const guint8 *buf, guint buf_size)
 {
     GstVaapiDecoderMpeg4Private * const priv = &decoder->priv;
-    GstMpeg4VisualObjectSequence * const vos_hdr = &priv->vos_hdr;
+    VaplMpeg4VisualObjectSequence * const vos_hdr = &priv->vos_hdr;
     GstVaapiProfile profile;
 
-    if (gst_mpeg4_parse_visual_object_sequence(vos_hdr, buf, buf_size) != GST_MPEG4_PARSER_OK) {
+    if (vapl_mpeg4_parse_visual_object_sequence(vos_hdr, buf, buf_size) != VAPL_MPEG4_PARSER_OK) {
         GST_DEBUG("failed to parse sequence header");
         return GST_VAAPI_DECODER_STATUS_ERROR_BITSTREAM_PARSER;
     }
 
     priv->level = vos_hdr->level;
     switch (vos_hdr->profile) {
-    case GST_MPEG4_PROFILE_SIMPLE:
+    case VAPL_MPEG4_PROFILE_SIMPLE:
         profile = GST_VAAPI_PROFILE_MPEG4_SIMPLE;
         break;
-    case GST_MPEG4_PROFILE_ADVANCED_SIMPLE:
-    case GST_MPEG4_PROFILE_SIMPLE_SCALABLE: /* shared profile with ADVANCED_SIMPLE */
+    case VAPL_MPEG4_PROFILE_ADVANCED_SIMPLE:
+    case VAPL_MPEG4_PROFILE_SIMPLE_SCALABLE: /* shared profile with ADVANCED_SIMPLE */
         profile = GST_VAAPI_PROFILE_MPEG4_ADVANCED_SIMPLE;
         break;
     default:
@@ -367,10 +367,10 @@ static GstVaapiDecoderStatus
 decode_visual_object(GstVaapiDecoderMpeg4 *decoder, const guint8 *buf, guint buf_size)
 {
     GstVaapiDecoderMpeg4Private * const priv = &decoder->priv;
-    GstMpeg4VisualObject * vo_hdr = &priv->vo_hdr;
-    GstMpeg4VideoSignalType * signal_type = &priv->signal_type;
+    VaplMpeg4VisualObject * vo_hdr = &priv->vo_hdr;
+    VaplMpeg4VideoSignalType * signal_type = &priv->signal_type;
 
-    if (gst_mpeg4_parse_visual_object (vo_hdr, signal_type, buf, buf_size) != GST_MPEG4_PARSER_OK) {
+    if (vapl_mpeg4_parse_visual_object (vo_hdr, signal_type, buf, buf_size) != VAPL_MPEG4_PARSER_OK) {
         GST_DEBUG("failed to parse visual object");
         return GST_VAAPI_DECODER_STATUS_ERROR_BITSTREAM_PARSER;
     }
@@ -384,10 +384,10 @@ decode_video_object_layer(GstVaapiDecoderMpeg4 *decoder, const guint8 *buf, guin
 {
     GstVaapiDecoder * const base_decoder = GST_VAAPI_DECODER(decoder);
     GstVaapiDecoderMpeg4Private * const priv = &decoder->priv;
-    GstMpeg4VisualObject * vo_hdr = &priv->vo_hdr;
-    GstMpeg4VideoObjectLayer * vol_hdr = &priv->vol_hdr;
+    VaplMpeg4VisualObject * vo_hdr = &priv->vo_hdr;
+    VaplMpeg4VideoObjectLayer * vol_hdr = &priv->vol_hdr;
 
-    if (gst_mpeg4_parse_video_object_layer (vol_hdr, vo_hdr, buf, buf_size) != GST_MPEG4_PARSER_OK) {
+    if (vapl_mpeg4_parse_video_object_layer (vol_hdr, vo_hdr, buf, buf_size) != VAPL_MPEG4_PARSER_OK) {
         GST_DEBUG("failed to parse video object layer");
         return GST_VAAPI_DECODER_STATUS_ERROR_BITSTREAM_PARSER;
     }
@@ -413,11 +413,11 @@ static GstVaapiDecoderStatus
 decode_gop(GstVaapiDecoderMpeg4 *decoder, const guint8 *buf, guint buf_size)
 {
     GstVaapiDecoderMpeg4Private * const priv = &decoder->priv;
-    GstMpeg4GroupOfVOP gop;
+    VaplMpeg4GroupOfVOP gop;
     GstClockTime gop_time;
 
     if (buf_size >4) {
-        if (gst_mpeg4_parse_group_of_vop(&gop, buf, buf_size) != GST_MPEG4_PARSER_OK) {
+        if (vapl_mpeg4_parse_group_of_vop(&gop, buf, buf_size) != VAPL_MPEG4_PARSER_OK) {
         GST_DEBUG("failed to parse GOP");
         return GST_VAAPI_DECODER_STATUS_ERROR_BITSTREAM_PARSER;
         }
@@ -452,8 +452,8 @@ decode_gop(GstVaapiDecoderMpeg4 *decoder, const guint8 *buf, guint buf_size)
 
 void
 calculate_pts_diff(GstVaapiDecoderMpeg4 *decoder,
-                      GstMpeg4VideoObjectLayer *vol_hdr,
-                      GstMpeg4VideoObjectPlane *vop_hdr)
+                      VaplMpeg4VideoObjectLayer *vol_hdr,
+                      VaplMpeg4VideoObjectPlane *vop_hdr)
 {
     GstVaapiDecoderMpeg4Private * const priv = &decoder->priv;
     GstClockTime frame_timestamp;
@@ -500,28 +500,28 @@ calculate_pts_diff(GstVaapiDecoderMpeg4 *decoder,
 static GstVaapiDecoderStatus
 decode_picture(GstVaapiDecoderMpeg4 *decoder, const guint8 *buf, guint buf_size)
 {
-    GstMpeg4ParseResult parser_result = GST_MPEG4_PARSER_OK;
+    VaplMpeg4ParseResult parser_result = VAPL_MPEG4_PARSER_OK;
     GstVaapiDecoderMpeg4Private * const priv = &decoder->priv;
-    GstMpeg4VideoObjectPlane * const vop_hdr = &priv->vop_hdr;
-    GstMpeg4VideoObjectLayer * const vol_hdr = &priv->vol_hdr;
-    GstMpeg4SpriteTrajectory * const sprite_trajectory = &priv->sprite_trajectory;
+    VaplMpeg4VideoObjectPlane * const vop_hdr = &priv->vop_hdr;
+    VaplMpeg4VideoObjectLayer * const vol_hdr = &priv->vol_hdr;
+    VaplMpeg4SpriteTrajectory * const sprite_trajectory = &priv->sprite_trajectory;
     GstVaapiPicture *picture;
     GstVaapiDecoderStatus status;
     GstClockTime pts;
 
     // context depends on priv->width and priv->height, so we move parse_vop a little earlier
     if (priv->is_svh) {
-        parser_result = gst_mpeg4_parse_video_plane_short_header(&priv->svh_hdr, buf, buf_size);
+        parser_result = vapl_mpeg4_parse_video_plane_short_header(&priv->svh_hdr, buf, buf_size);
 
     }
     else {
-        parser_result = gst_mpeg4_parse_video_object_plane(vop_hdr, sprite_trajectory, vol_hdr, buf, buf_size);
+        parser_result = vapl_mpeg4_parse_video_object_plane(vop_hdr, sprite_trajectory, vol_hdr, buf, buf_size);
         /* Need to skip this frame if VOP was not coded */
-        if (GST_MPEG4_PARSER_OK == parser_result && !vop_hdr->coded)
+        if (VAPL_MPEG4_PARSER_OK == parser_result && !vop_hdr->coded)
             return GST_VAAPI_DECODER_STATUS_ERROR_NO_DATA;
     }
 
-    if (parser_result != GST_MPEG4_PARSER_OK) {
+    if (parser_result != VAPL_MPEG4_PARSER_OK) {
         GST_DEBUG("failed to parse picture header");
         return GST_VAAPI_DECODER_STATUS_ERROR_BITSTREAM_PARSER;
     }
@@ -579,20 +579,20 @@ decode_picture(GstVaapiDecoderMpeg4 *decoder, const guint8 *buf, guint buf_size)
         priv->coding_type = priv->vop_hdr.coding_type;
     }
     switch (priv->coding_type) {
-    case GST_MPEG4_I_VOP:
+    case VAPL_MPEG4_I_VOP:
         picture->type = GST_VAAPI_PICTURE_TYPE_I;
         if (priv->is_svh || vop_hdr->coded) 
             GST_VAAPI_PICTURE_FLAG_SET(picture, GST_VAAPI_PICTURE_FLAG_REFERENCE);
         break;
-    case GST_MPEG4_P_VOP:
+    case VAPL_MPEG4_P_VOP:
         picture->type = GST_VAAPI_PICTURE_TYPE_P;
         if (priv->is_svh || vop_hdr->coded) 
             GST_VAAPI_PICTURE_FLAG_SET(picture, GST_VAAPI_PICTURE_FLAG_REFERENCE);
         break;
-    case GST_MPEG4_B_VOP:
+    case VAPL_MPEG4_B_VOP:
         picture->type = GST_VAAPI_PICTURE_TYPE_B;
         break;
-    case GST_MPEG4_S_VOP:
+    case VAPL_MPEG4_S_VOP:
         picture->type = GST_VAAPI_PICTURE_TYPE_S;
         // see 3.175 reference VOP
         if (vop_hdr->coded) 
@@ -629,7 +629,7 @@ decode_picture(GstVaapiDecoderMpeg4 *decoder, const guint8 *buf, guint buf_size)
         }
 
         /* Update presentation time, 6.3.5 */
-        if(vop_hdr->coding_type != GST_MPEG4_B_VOP) {
+        if(vop_hdr->coding_type != VAPL_MPEG4_B_VOP) {
             // increment basing on decoding order
             priv->last_sync_time = priv->sync_time;
             priv->sync_time = priv->last_sync_time + vop_hdr->modulo_time_base;
@@ -673,7 +673,7 @@ fill_picture(GstVaapiDecoderMpeg4 *decoder, GstVaapiPicture *picture)
 {
     GstVaapiDecoderMpeg4Private * const priv = &decoder->priv;
     VAPictureParameterBufferMPEG4 * const pic_param = picture->param;
-    GstMpeg4VideoObjectPlane * const vop_hdr = &priv->vop_hdr;
+    VaplMpeg4VideoObjectPlane * const vop_hdr = &priv->vop_hdr;
 
     /* Fill in VAPictureParameterBufferMPEG4 */
     pic_param->forward_reference_picture                        = VA_INVALID_ID;
@@ -744,12 +744,12 @@ fill_picture(GstVaapiDecoderMpeg4 *decoder, GstVaapiPicture *picture)
     pic_param->TRB = 0;
     pic_param->TRD = 0;
     switch (priv->coding_type) {
-    case GST_MPEG4_B_VOP:
+    case VAPL_MPEG4_B_VOP:
         pic_param->TRB                                          = priv->trb;
         pic_param->backward_reference_picture                   = priv->next_picture->surface_id;
         pic_param->vop_fields.bits.backward_reference_vop_coding_type = get_vop_coding_type(priv->next_picture);
         // fall-through
-    case GST_MPEG4_P_VOP:
+    case VAPL_MPEG4_P_VOP:
         pic_param->TRD                                          = priv->trd;
         if (priv->prev_picture)
             pic_param->forward_reference_picture                = priv->prev_picture->surface_id;
@@ -812,36 +812,36 @@ decode_slice(
 }
 
 static GstVaapiDecoderStatus
-decode_packet(GstVaapiDecoderMpeg4 *decoder, GstMpeg4Packet packet)
+decode_packet(GstVaapiDecoderMpeg4 *decoder, VaplMpeg4Packet packet)
 {
     GstVaapiDecoderMpeg4Private * const priv = &decoder->priv;
-    GstMpeg4Packet *tos = &packet;
+    VaplMpeg4Packet *tos = &packet;
     GstVaapiDecoderStatus status;
 
     if (tos->size < 0)
         return GST_VAAPI_DECODER_STATUS_ERROR_NO_DATA;
 
     // packet.size is the size from current marker to the next.
-    if (tos->type == GST_MPEG4_VISUAL_OBJ_SEQ_START) {
+    if (tos->type == VAPL_MPEG4_VISUAL_OBJ_SEQ_START) {
         status = decode_sequence(decoder, packet.data + packet.offset, packet.size);
     }
-    else if (tos->type == GST_MPEG4_VISUAL_OBJ_SEQ_END) {
+    else if (tos->type == VAPL_MPEG4_VISUAL_OBJ_SEQ_END) {
         status = decode_sequence_end(decoder);
     }
-    else if (tos->type == GST_MPEG4_VISUAL_OBJ) {
+    else if (tos->type == VAPL_MPEG4_VISUAL_OBJ) {
         status = decode_visual_object(decoder, packet.data + packet.offset, packet.size);
     }
-    else if (tos->type >= GST_MPEG4_VIDEO_OBJ_FIRST && tos->type <= GST_MPEG4_VIDEO_OBJ_LAST) {
-        GST_WARNING("unexpected marker: (GST_MPEG4_VIDEO_OBJ_FIRST, GST_MPEG4_VIDEO_OBJ_LAST)");
+    else if (tos->type >= VAPL_MPEG4_VIDEO_OBJ_FIRST && tos->type <= VAPL_MPEG4_VIDEO_OBJ_LAST) {
+        GST_WARNING("unexpected marker: (VAPL_MPEG4_VIDEO_OBJ_FIRST, VAPL_MPEG4_VIDEO_OBJ_LAST)");
         status = GST_VAAPI_DECODER_STATUS_SUCCESS;
     }
-    else if (tos->type >= GST_MPEG4_VIDEO_LAYER_FIRST && tos->type <= GST_MPEG4_VIDEO_LAYER_LAST) {
+    else if (tos->type >= VAPL_MPEG4_VIDEO_LAYER_FIRST && tos->type <= VAPL_MPEG4_VIDEO_LAYER_LAST) {
         status = decode_video_object_layer(decoder, packet.data + packet.offset, packet.size);
     }
-    else if (tos->type == GST_MPEG4_GROUP_OF_VOP) {
+    else if (tos->type == VAPL_MPEG4_GROUP_OF_VOP) {
         status = decode_gop(decoder, packet.data + packet.offset, packet.size);
     }
-    else if (tos->type == GST_MPEG4_VIDEO_OBJ_PLANE) {
+    else if (tos->type == VAPL_MPEG4_VIDEO_OBJ_PLANE) {
         status = decode_picture(decoder, packet.data + packet.offset, packet.size);
         if (status != GST_VAAPI_DECODER_STATUS_SUCCESS)
             return status;
@@ -857,7 +857,7 @@ decode_packet(GstVaapiDecoderMpeg4 *decoder, GstMpeg4Packet packet)
          */
         const guint8 *_data = packet.data + packet.offset + priv->vop_hdr.size/8; 
         gint  _data_size = packet.size - (priv->vop_hdr.size/8); 
-        GstMpeg4Packet video_packet;
+        VaplMpeg4Packet video_packet;
         
         if (priv->vol_hdr.resync_marker_disable) {
             status = decode_slice(decoder, _data, _data_size, FALSE);
@@ -867,13 +867,13 @@ decode_packet(GstVaapiDecoderMpeg4 *decoder, GstMpeg4Packet packet)
         else {
             // next start_code is required to determine the end of last slice
             _data_size += 4;
-            GstMpeg4ParseResult ret = GST_MPEG4_PARSER_OK;
+            VaplMpeg4ParseResult ret = VAPL_MPEG4_PARSER_OK;
 
             gboolean first_slice = TRUE;
             while (_data_size > 0) {
                 // we can skip user data here
-                ret = gst_mpeg4_parse(&video_packet, TRUE, &priv->vop_hdr, _data, 0,  _data_size);
-                if(ret != GST_MPEG4_PARSER_OK) {
+                ret = vapl_mpeg4_parse(&video_packet, TRUE, &priv->vop_hdr, _data, 0,  _data_size);
+                if(ret != VAPL_MPEG4_PARSER_OK) {
                     break;
                 }
 
@@ -885,7 +885,7 @@ decode_packet(GstVaapiDecoderMpeg4 *decoder, GstMpeg4Packet packet)
                     _data += video_packet.offset;
                     _data_size -= video_packet.offset;
 
-                    ret = gst_mpeg4_parse_video_packet_header (&priv->packet_hdr, &priv->vol_hdr, &priv->vop_hdr, &priv->sprite_trajectory, _data, _data_size);
+                    ret = vapl_mpeg4_parse_video_packet_header (&priv->packet_hdr, &priv->vol_hdr, &priv->vop_hdr, &priv->sprite_trajectory, _data, _data_size);
                     status = decode_slice(decoder,_data + priv->packet_hdr.size/8, video_packet.size - priv->packet_hdr.size/8, TRUE); 
                 }
 
@@ -895,20 +895,20 @@ decode_packet(GstVaapiDecoderMpeg4 *decoder, GstMpeg4Packet packet)
         }
         status = decode_current_picture(decoder);
     }
-    else if (tos->type == GST_MPEG4_USER_DATA
-          || tos->type == GST_MPEG4_VIDEO_SESSION_ERR 
-          || tos->type == GST_MPEG4_FBA 
-          || tos->type == GST_MPEG4_FBA_PLAN 
-          || tos->type == GST_MPEG4_MESH 
-          || tos->type == GST_MPEG4_MESH_PLAN 
-          || tos->type == GST_MPEG4_STILL_TEXTURE_OBJ 
-          || tos->type == GST_MPEG4_TEXTURE_SPATIAL 
-          || tos->type == GST_MPEG4_TEXTURE_SNR_LAYER 
-          || tos->type == GST_MPEG4_TEXTURE_TILE 
-          || tos->type == GST_MPEG4_SHAPE_LAYER 
-          || tos->type == GST_MPEG4_STUFFING 
-          || tos->type == GST_MPEG4_SYSTEM_FIRST 
-          || tos->type == GST_MPEG4_SYSTEM_LAST) {
+    else if (tos->type == VAPL_MPEG4_USER_DATA
+          || tos->type == VAPL_MPEG4_VIDEO_SESSION_ERR 
+          || tos->type == VAPL_MPEG4_FBA 
+          || tos->type == VAPL_MPEG4_FBA_PLAN 
+          || tos->type == VAPL_MPEG4_MESH 
+          || tos->type == VAPL_MPEG4_MESH_PLAN 
+          || tos->type == VAPL_MPEG4_STILL_TEXTURE_OBJ 
+          || tos->type == VAPL_MPEG4_TEXTURE_SPATIAL 
+          || tos->type == VAPL_MPEG4_TEXTURE_SNR_LAYER 
+          || tos->type == VAPL_MPEG4_TEXTURE_TILE 
+          || tos->type == VAPL_MPEG4_SHAPE_LAYER 
+          || tos->type == VAPL_MPEG4_STUFFING 
+          || tos->type == VAPL_MPEG4_SYSTEM_FIRST 
+          || tos->type == VAPL_MPEG4_SYSTEM_LAST) {
         GST_WARNING("Ignore marker: %x\n", tos->type);
         status = GST_VAAPI_DECODER_STATUS_SUCCESS;
     }
@@ -925,7 +925,7 @@ decode_buffer(GstVaapiDecoderMpeg4 *decoder, const guchar *buf, guint buf_size)
 {
     GstVaapiDecoderMpeg4Private * const priv = &decoder->priv;
     GstVaapiDecoderStatus status;
-    GstMpeg4Packet packet;
+    VaplMpeg4Packet packet;
     guint ofs;
 
     if (priv->is_svh) {
@@ -942,7 +942,7 @@ decode_buffer(GstVaapiDecoderMpeg4 *decoder, const guchar *buf, guint buf_size)
         packet.data   = buf;
         packet.offset = 0;
         packet.size   = buf_size;
-        packet.type   = (GstMpeg4StartCode)packet.data[0];
+        packet.type   = (VaplMpeg4StartCode)packet.data[0];
 
         status = decode_packet(decoder, packet);
         if (status != GST_VAAPI_DECODER_STATUS_SUCCESS)
@@ -971,12 +971,12 @@ gst_vaapi_decoder_mpeg4_decode_codec_data(GstVaapiDecoder *base_decoder,
     buf[buf_size-1] = 0xb2;
 
     pos = 0;
-    GstMpeg4Packet packet;
-    GstMpeg4ParseResult result = GST_MPEG4_PARSER_OK;
+    VaplMpeg4Packet packet;
+    VaplMpeg4ParseResult result = VAPL_MPEG4_PARSER_OK;
 
-    while (result == GST_MPEG4_PARSER_OK && pos < buf_size) {
-        result = gst_mpeg4_parse(&packet, FALSE, NULL, buf, pos, buf_size);
-        if (result != GST_MPEG4_PARSER_OK) {
+    while (result == VAPL_MPEG4_PARSER_OK && pos < buf_size) {
+        result = vapl_mpeg4_parse(&packet, FALSE, NULL, buf, pos, buf_size);
+        if (result != VAPL_MPEG4_PARSER_OK) {
             break;
         }
         status = decode_packet(decoder, packet);
@@ -1019,8 +1019,8 @@ gst_vaapi_decoder_mpeg4_parse(GstVaapiDecoder *base_decoder,
         GST_VAAPI_DECODER_MPEG4_CAST(base_decoder);
     GstVaapiDecoderMpeg4Private * const priv = &decoder->priv;
     GstVaapiDecoderStatus status;
-    GstMpeg4Packet packet;
-    GstMpeg4ParseResult result;
+    VaplMpeg4Packet packet;
+    VaplMpeg4ParseResult result;
     const guchar *buf;
     guint size, buf_size, flags = 0;
 
@@ -1034,14 +1034,14 @@ gst_vaapi_decoder_mpeg4_parse(GstVaapiDecoder *base_decoder,
         return GST_VAAPI_DECODER_STATUS_ERROR_NO_DATA;
 
     if (priv->is_svh)
-        result = gst_h263_parse(&packet, buf, 0, size);
+        result = vapl_h263_parse(&packet, buf, 0, size);
     else
-        result = gst_mpeg4_parse(&packet, FALSE, NULL, buf, 0, size);
-    if (result == GST_MPEG4_PARSER_NO_PACKET_END && at_eos)
+        result = vapl_mpeg4_parse(&packet, FALSE, NULL, buf, 0, size);
+    if (result == VAPL_MPEG4_PARSER_NO_PACKET_END && at_eos)
         packet.size = size - packet.offset;
-    else if (result == GST_MPEG4_PARSER_ERROR)
+    else if (result == VAPL_MPEG4_PARSER_ERROR)
         return GST_VAAPI_DECODER_STATUS_ERROR_BITSTREAM_PARSER;
-    else if (result != GST_MPEG4_PARSER_OK)
+    else if (result != VAPL_MPEG4_PARSER_OK)
         return GST_VAAPI_DECODER_STATUS_ERROR_NO_DATA;
 
     buf_size = packet.size;
@@ -1050,47 +1050,47 @@ gst_vaapi_decoder_mpeg4_parse(GstVaapiDecoder *base_decoder,
 
     /* Check for start of new picture */
     switch (packet.type) {
-    case GST_MPEG4_VIDEO_SESSION_ERR:
-    case GST_MPEG4_FBA:
-    case GST_MPEG4_FBA_PLAN:
-    case GST_MPEG4_MESH:
-    case GST_MPEG4_MESH_PLAN:
-    case GST_MPEG4_STILL_TEXTURE_OBJ:
-    case GST_MPEG4_TEXTURE_SPATIAL:
-    case GST_MPEG4_TEXTURE_SNR_LAYER:
-    case GST_MPEG4_TEXTURE_TILE:
-    case GST_MPEG4_SHAPE_LAYER:
-    case GST_MPEG4_STUFFING:
+    case VAPL_MPEG4_VIDEO_SESSION_ERR:
+    case VAPL_MPEG4_FBA:
+    case VAPL_MPEG4_FBA_PLAN:
+    case VAPL_MPEG4_MESH:
+    case VAPL_MPEG4_MESH_PLAN:
+    case VAPL_MPEG4_STILL_TEXTURE_OBJ:
+    case VAPL_MPEG4_TEXTURE_SPATIAL:
+    case VAPL_MPEG4_TEXTURE_SNR_LAYER:
+    case VAPL_MPEG4_TEXTURE_TILE:
+    case VAPL_MPEG4_SHAPE_LAYER:
+    case VAPL_MPEG4_STUFFING:
         gst_adapter_flush(adapter, packet.size);
         return GST_VAAPI_DECODER_STATUS_ERROR_NO_DATA;
-    case GST_MPEG4_USER_DATA:
+    case VAPL_MPEG4_USER_DATA:
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_SKIP;
         break;
-    case GST_MPEG4_VISUAL_OBJ_SEQ_END:
+    case VAPL_MPEG4_VISUAL_OBJ_SEQ_END:
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_FRAME_END;
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_STREAM_END;
         break;
-    case GST_MPEG4_VIDEO_OBJ_PLANE:
+    case VAPL_MPEG4_VIDEO_OBJ_PLANE:
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_SLICE;
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_FRAME_END;
         /* fall-through */
-    case GST_MPEG4_VISUAL_OBJ_SEQ_START:
-    case GST_MPEG4_VISUAL_OBJ:
-    case GST_MPEG4_GROUP_OF_VOP:
+    case VAPL_MPEG4_VISUAL_OBJ_SEQ_START:
+    case VAPL_MPEG4_VISUAL_OBJ:
+    case VAPL_MPEG4_GROUP_OF_VOP:
         flags |= GST_VAAPI_DECODER_UNIT_FLAG_FRAME_START;
         break;
     default:
-        if (packet.type >= GST_MPEG4_VIDEO_OBJ_FIRST &&
-            packet.type <= GST_MPEG4_VIDEO_OBJ_LAST) {
+        if (packet.type >= VAPL_MPEG4_VIDEO_OBJ_FIRST &&
+            packet.type <= VAPL_MPEG4_VIDEO_OBJ_LAST) {
             gst_adapter_flush(adapter, packet.size);
             return GST_VAAPI_DECODER_STATUS_ERROR_NO_DATA;
         }
-        if (packet.type >= GST_MPEG4_VIDEO_LAYER_FIRST &&
-            packet.type <= GST_MPEG4_VIDEO_LAYER_LAST) {
+        if (packet.type >= VAPL_MPEG4_VIDEO_LAYER_FIRST &&
+            packet.type <= VAPL_MPEG4_VIDEO_LAYER_LAST) {
             break;
         }
-        if (packet.type >= GST_MPEG4_SYSTEM_FIRST &&
-            packet.type <= GST_MPEG4_SYSTEM_LAST) {
+        if (packet.type >= VAPL_MPEG4_SYSTEM_FIRST &&
+            packet.type <= VAPL_MPEG4_SYSTEM_LAST) {
             flags |= GST_VAAPI_DECODER_UNIT_FLAG_SKIP;
             break;
         }

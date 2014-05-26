@@ -27,7 +27,7 @@
  */
 
 #include "sysdeps.h"
-#include <vapl/gstvp8parser.h>
+#include <vapl/vapl_vp8_parser.h>
 #include "gstvaapidecoder_vp8.h"
 #include "gstvaapidecoder_objects.h"
 #include "gstvaapidecoder_priv.h"
@@ -53,8 +53,8 @@ struct _GstVaapiDecoderVp8Private
   GstVaapiProfile profile;
   guint width;
   guint height;
-  GstVp8Parser parser;
-  GstVp8FrameHdr frame_hdr;
+  VaplVp8Parser parser;
+  VaplVp8FrameHdr frame_hdr;
   GstVaapiPicture *last_picture;
   GstVaapiPicture *golden_ref_picture;
   GstVaapiPicture *alt_ref_picture;
@@ -87,15 +87,15 @@ struct _GstVaapiDecoderVp8Class
 };
 
 static GstVaapiDecoderStatus
-get_status (GstVp8ParserResult result)
+get_status (VaplVp8ParserResult result)
 {
   GstVaapiDecoderStatus status;
 
   switch (result) {
-    case GST_VP8_PARSER_OK:
+    case VAPL_VP8_PARSER_OK:
       status = GST_VAAPI_DECODER_STATUS_SUCCESS;
       break;
-    case GST_VP8_PARSER_ERROR:
+    case VAPL_VP8_PARSER_ERROR:
       status = GST_VAAPI_DECODER_STATUS_ERROR_BITSTREAM_PARSER;
       break;
     default:
@@ -122,7 +122,7 @@ gst_vaapi_decoder_vp8_open (GstVaapiDecoderVp8 * decoder)
   GstVaapiDecoderVp8Private *const priv = &decoder->priv;
 
   gst_vaapi_decoder_vp8_close (decoder);
-  gst_vp8_parser_init (&priv->parser);
+  vapl_vp8_parser_init (&priv->parser);
   return TRUE;
 }
 
@@ -192,8 +192,8 @@ static GstVaapiDecoderStatus
 ensure_quant_matrix (GstVaapiDecoderVp8 * decoder, GstVaapiPicture * picture)
 {
   GstVaapiDecoderVp8Private *const priv = &decoder->priv;
-  GstVp8FrameHdr *const frame_hdr = &priv->frame_hdr;
-  GstVp8Segmentation *const seg = &priv->parser.segmentation;
+  VaplVp8FrameHdr *const frame_hdr = &priv->frame_hdr;
+  VaplVp8Segmentation *const seg = &priv->parser.segmentation;
   VAIQMatrixBufferVP8 *iq_matrix;
   const gint8 QI_MAX = 127;
   gint8 qi, qi_base;
@@ -236,7 +236,7 @@ ensure_probability_table (GstVaapiDecoderVp8 * decoder,
     GstVaapiPicture * picture)
 {
   GstVaapiDecoderVp8Private *const priv = &decoder->priv;
-  GstVp8FrameHdr *const frame_hdr = &priv->frame_hdr;
+  VaplVp8FrameHdr *const frame_hdr = &priv->frame_hdr;
   VAProbabilityDataBufferVP8 *prob_table;
 
   picture->prob_table = GST_VAAPI_PROBABILITY_TABLE_NEW (VP8, decoder);
@@ -257,7 +257,7 @@ static void
 init_picture (GstVaapiDecoderVp8 * decoder, GstVaapiPicture * picture)
 {
   GstVaapiDecoderVp8Private *const priv = &decoder->priv;
-  GstVp8FrameHdr *const frame_hdr = &priv->frame_hdr;
+  VaplVp8FrameHdr *const frame_hdr = &priv->frame_hdr;
 
   picture->structure = GST_VAAPI_PICTURE_STRUCTURE_FRAME;
   picture->type = frame_hdr->key_frame ? GST_VAAPI_PICTURE_TYPE_I :
@@ -273,9 +273,9 @@ fill_picture (GstVaapiDecoderVp8 * decoder, GstVaapiPicture * picture)
 {
   GstVaapiDecoderVp8Private *const priv = &decoder->priv;
   VAPictureParameterBufferVP8 *const pic_param = picture->param;
-  GstVp8Parser *const parser = &priv->parser;
-  GstVp8FrameHdr *const frame_hdr = &priv->frame_hdr;
-  GstVp8Segmentation *const seg = &parser->segmentation;
+  VaplVp8Parser *const parser = &priv->parser;
+  VaplVp8FrameHdr *const frame_hdr = &priv->frame_hdr;
+  VaplVp8Segmentation *const seg = &parser->segmentation;
   gint i;
 
   /* Fill in VAPictureParameterBufferVP8 */
@@ -362,7 +362,7 @@ fill_slice (GstVaapiDecoderVp8 * decoder, GstVaapiSlice * slice)
 {
   GstVaapiDecoderVp8Private *const priv = &decoder->priv;
   VASliceParameterBufferVP8 *const slice_param = slice->param;
-  GstVp8FrameHdr *const frame_hdr = &priv->frame_hdr;
+  VaplVp8FrameHdr *const frame_hdr = &priv->frame_hdr;
   gint i;
 
   /* Fill in VASliceParameterBufferVP8 */
@@ -443,7 +443,7 @@ update_ref_frames (GstVaapiDecoderVp8 * decoder)
 {
   GstVaapiDecoderVp8Private *const priv = &decoder->priv;
   GstVaapiPicture *picture = priv->current_picture;
-  GstVp8FrameHdr *const frame_hdr = &priv->frame_hdr;
+  VaplVp8FrameHdr *const frame_hdr = &priv->frame_hdr;
 
   // update picture reference
   if (frame_hdr->key_frame) {
@@ -522,15 +522,15 @@ error:
 
 static GstVaapiDecoderStatus
 parse_frame_header (GstVaapiDecoderVp8 * decoder, const guchar * buf,
-    guint buf_size, GstVp8FrameHdr * frame_hdr)
+    guint buf_size, VaplVp8FrameHdr * frame_hdr)
 {
   GstVaapiDecoderVp8Private *const priv = &decoder->priv;
-  GstVp8ParserResult result;
+  VaplVp8ParserResult result;
 
   memset (frame_hdr, 0, sizeof (*frame_hdr));
-  result = gst_vp8_parser_parse_frame_header (&priv->parser, frame_hdr,
+  result = vapl_vp8_parser_parse_frame_header (&priv->parser, frame_hdr,
       buf, buf_size);
-  if (result != GST_VP8_PARSER_OK)
+  if (result != VAPL_VP8_PARSER_OK)
     return get_status (result);
 
   if (frame_hdr->key_frame &&
