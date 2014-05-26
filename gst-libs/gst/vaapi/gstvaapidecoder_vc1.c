@@ -27,7 +27,7 @@
 
 #include "sysdeps.h"
 #include <string.h>
-#include <gst/codecparsers/gstvc1parser.h>
+#include <vapl/gstvc1parser.h>
 #include "gstvaapidecoder_vc1.h"
 #include "gstvaapidecoder_objects.h"
 #include "gstvaapidecoder_dpb.h"

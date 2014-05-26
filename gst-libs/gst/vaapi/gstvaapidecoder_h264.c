@@ -28,7 +28,7 @@
 #include "sysdeps.h"
 #include <string.h>
 #include <gst/base/gstadapter.h>
-#include <gst/codecparsers/gsth264parser.h>
+#include <vapl/gsth264parser.h>
 #include "gstvaapidecoder_h264.h"
 #include "gstvaapidecoder_objects.h"
 #include "gstvaapidecoder_priv.h"

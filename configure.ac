@@ -54,6 +54,9 @@ m4_define([libva_x11_package_version], [1.0.3])
 m4_define([libva_glx_package_version], [1.0.9])
 m4_define([libva_wld_package_version], [1.1.0])
 
+# VAPL minimum version number
+m4_define([libvapl_version],    [0.5.9])
+
 # gtk-doc version number
 # XXX: introspection annotations require gtk-doc >= 1.12
 m4_define([gtkdoc_version], [1.9])
@@ -95,25 +98,9 @@ AC_ARG_VAR([GIT], [Path to git program, if any])
 AC_PATH_PROG([GIT], [git])
 AM_CONDITIONAL([HAVE_GIT], [test -n "$GIT"])
 
-AC_ARG_VAR([YASM], [Path to yasm program, if any])
-AC_PATH_PROG([YASM], [yasm])
-if test -z "$YASM" -a "$enable_builtin_libvpx" = "yes"; then
-    AC_MSG_ERROR([yasm is needed to build libvpx sources])
-fi
-
 dnl Initialize libtool
 LT_PREREQ([2.2])
 LT_INIT
-
-AC_ARG_ENABLE(builtin_codecparsers,
-    AS_HELP_STRING([--enable-builtin-codecparsers],
-                   [enable built-in codecparsers @<:@default=yes@:>@]),
-    [], [enable_builtin_codecparsers="yes"])
-
-AC_ARG_ENABLE(builtin_libvpx,
-    AS_HELP_STRING([--enable-builtin-libvpx],
-                   [enable built-in libvpx @<:@default=yes@:>@]),
-    [], [enable_builtin_libvpx="yes"])
 
 AC_ARG_ENABLE([encoders],
     AS_HELP_STRING([--enable-encoders],
@@ -156,6 +143,11 @@ m4_ifdef([GTK_DOC_CHECK], [
 GTK_DOC_CHECK([$GTKDOC_VERSION], [--flavour no-tmpl])], [
 AM_CONDITIONAL([ENABLE_GTK_DOC], [false])])
 AC_SUBST(GTKDOC_VERSION)
+
+dnl Check for libvapl
+LIBVAPL_VERSION_REQUIRED=libvapl_version
+PKG_CHECK_MODULES([LIBVAPL], [libvapl >= $LIBVAPL_VERSION_REQUIRED])
+AC_SUBST([VAPL_VERSION_REQUIRED])
 
 dnl Check for GLib
 GLIB_VERSION_REQUIRED=glib_version
@@ -340,114 +332,6 @@ if test "$USE_GST_API_1_2p" != "yes"; then
 PKG_CHECK_MODULES([GST_BASEVIDEO],
     [gstreamer-basevideo-$GST_PKG_VERSION >= $GST_PLUGINS_BAD_VERSION_REQUIRED])
 fi
-
-dnl ... bitstream parsers
-if test "$enable_builtin_codecparsers" = "yes"; then
-    ac_cv_have_gst_mpeg2_parser="no"
-    ac_cv_have_gst_h264_parser="no"
-    ac_cv_have_gst_jpeg_parser="no"
-    ac_cv_have_gst_vp8_parser="no"
-else
-PKG_CHECK_MODULES([GST_CODEC_PARSERS],
-    [gstreamer-codecparsers-$GST_PKG_VERSION >= $GST_PLUGINS_BAD_VERSION_REQUIRED])
-fi
-
-dnl ... MPEG-2 parser, with the required extensions
-AC_CACHE_CHECK([for MPEG-2 parser],
-    ac_cv_have_gst_mpeg2_parser, [
-    saved_CPPFLAGS="$CPPFLAGS"
-    CPPFLAGS="$CPPFLAGS $GST_CFLAGS $GST_CODEC_PARSERS_CFLAGS"
-    saved_LIBS="$LIBS"
-    LIBS="$LIBS $GST_LIBS $GST_CODEC_PARSERS_LIBS"
-    AC_COMPILE_IFELSE(
-        [AC_LANG_PROGRAM(
-            [[#include <gst/codecparsers/gstmpegvideoparser.h>]],
-            [[GstMpegVideoSequenceHdr seq_hdr;
-              GstMpegVideoSequenceExt seq_ext;
-              GstMpegVideoSequenceDisplayExt seq_dpy;
-              GstMpegVideoSliceHdr slice_hdr;
-              GstMpegVideoPacket packet;
-              gst_mpeg_video_packet_parse_slice_header(&packet, &slice_hdr,
-                  &seq_hdr, NULL);
-              gst_mpeg_video_finalise_mpeg2_sequence_header(&seq_hdr,
-                  &seq_ext, &seq_dpy);]])],
-        [ac_cv_have_gst_mpeg2_parser="yes"],
-        [ac_cv_have_gst_mpeg2_parser="no"]
-    )
-    CPPFLAGS="$saved_CPPFLAGS"
-    LIBS="$saved_LIBS"
-])
-AM_CONDITIONAL([USE_LOCAL_CODEC_PARSERS_MPEG2],
-    [test "$ac_cv_have_gst_mpeg2_parser" != "yes"])
-
-dnl ... H.264 parser, with the required extensions
-AC_CACHE_CHECK([for H.264 parser],
-    ac_cv_have_gst_h264_parser, [
-    saved_CPPFLAGS="$CPPFLAGS"
-    CPPFLAGS="$CPPFLAGS $GST_CFLAGS $GST_CODEC_PARSERS_CFLAGS"
-    saved_LIBS="$LIBS"
-    LIBS="$LIBS $GST_LIBS $GST_CODEC_PARSERS_LIBS"
-    AC_COMPILE_IFELSE(
-        [AC_LANG_PROGRAM(
-            [[#include <gst/codecparsers/gsth264parser.h>]],
-            [[GstH264SliceHdr slice_hdr;
-              GstH264VUIParams vui_params;
-              GstH264Profile profile = GST_H264_PROFILE_HIGH;
-              slice_hdr.n_emulation_prevention_bytes = 0;
-              vui_params.par_n = 0;
-              vui_params.par_d = 0;]])],
-        [ac_cv_have_gst_h264_parser="yes"],
-        [ac_cv_have_gst_h264_parser="no"]
-    )
-    CPPFLAGS="$saved_CPPFLAGS"
-    LIBS="$saved_LIBS"
-])
-AM_CONDITIONAL([USE_LOCAL_CODEC_PARSERS_H264],
-    [test "$ac_cv_have_gst_h264_parser" != "yes"])
-
-dnl ... JPEG parser, not upstream yet
-AC_CACHE_CHECK([for JPEG parser],
-    ac_cv_have_gst_jpeg_parser, [
-    saved_CPPFLAGS="$CPPFLAGS"
-    CPPFLAGS="$CPPFLAGS $GST_CFLAGS $GST_CODEC_PARSERS_CFLAGS"
-    saved_LIBS="$LIBS"
-    LIBS="$LIBS $GST_LIBS $GST_CODEC_PARSERS_LIBS"
-    AC_COMPILE_IFELSE(
-        [AC_LANG_PROGRAM(
-            [[#include <gst/codecparsers/gstjpegparser.h>]],
-            [[GstJpegImage jpeg_image;]])],
-        [ac_cv_have_gst_jpeg_parser="yes"],
-        [ac_cv_have_gst_jpeg_parser="no"]
-    )
-    CPPFLAGS="$saved_CPPFLAGS"
-    LIBS="$saved_LIBS"
-])
-AM_CONDITIONAL([USE_LOCAL_CODEC_PARSERS_JPEG],
-    [test "$ac_cv_have_gst_jpeg_parser" != "yes"])
-
-dnl ... VP8 parser, not upstream yet
-if test "$enable_builtin_libvpx" = "yes"; then
-    ac_cv_have_gst_vp8_parser="no"
-fi
-AC_CACHE_CHECK([for VP8 parser],
-    ac_cv_have_gst_vp8_parser, [
-    saved_CPPFLAGS="$CPPFLAGS"
-    CPPFLAGS="$CPPFLAGS $GST_CFLAGS $GST_CODEC_PARSERS_CFLAGS"
-    saved_LIBS="$LIBS"
-    LIBS="$LIBS $GST_LIBS $GST_CODEC_PARSERS_LIBS"
-    AC_COMPILE_IFELSE(
-        [AC_LANG_PROGRAM(
-            [[#include <gst/codecparsers/gstvp8parser.h>]],
-            [[GstVp8FrameHdr frame_hdr;]])],
-        [ac_cv_have_gst_vp8_parser="yes"],
-        [ac_cv_have_gst_vp8_parser="no"]
-    )
-    CPPFLAGS="$saved_CPPFLAGS"
-    LIBS="$saved_LIBS"
-])
-AM_CONDITIONAL([USE_LOCAL_CODEC_PARSERS_VP8],
-    [test "$ac_cv_have_gst_vp8_parser" != "yes"])
-AM_CONDITIONAL([USE_BUILTIN_LIBVPX], [test "$enable_builtin_libvpx" = "yes"])
 
 case $GST_API_VERSION in
 0.10)   lt_bias=gst0_vaapi_lt_current_bias;;
@@ -859,11 +743,9 @@ debian.upstream/libgstvaapi-x11.install.in
     docs/reference/plugins/Makefile
     docs/reference/plugins/plugins-docs.xml
     ext/Makefile
-    ext/libvpx/Makefile
     gst-libs/Makefile
     gst-libs/gst/Makefile
     gst-libs/gst/base/Makefile
-    gst-libs/gst/codecparsers/Makefile
     gst-libs/gst/vaapi/Makefile
     gst-libs/gst/video/Makefile
     gst/Makefile

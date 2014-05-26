@@ -21,12 +21,11 @@ if test -z "$GIT"; then
     exit 1
 else
     submodule_init="no"
-    for ext_module in codecparsers videoutils; do
+    for ext_module in videoutils; do
         if test ! -f ext/${ext_module}/autogen.sh; then
             submodule_init="yes"
         fi
     done
-    [ -f ext/libvpx/upstream/configure ] || submodule_init="yes"
     if test "$submodule_init" = "yes"; then
         $GIT submodule init
     fi

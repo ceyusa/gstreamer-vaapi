@@ -21,7 +21,7 @@
  */
 
 #include "sysdeps.h"
-#include <gst/codecparsers/gsth264parser.h>
+#include <vapl/gsth264parser.h>
 #include "gstvaapiutils_h264_priv.h"
 
 struct map

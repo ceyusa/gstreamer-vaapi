@@ -21,7 +21,7 @@
  */
 
 #include "sysdeps.h"
-#include <gst/codecparsers/gstmpegvideoparser.h>
+#include <vapl/gstmpegvideoparser.h>
 #include "gstvaapiutils_mpeg2_priv.h"
 
 struct map

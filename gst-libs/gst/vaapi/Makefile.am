@@ -31,6 +31,7 @@ libgstvaapi_cflags =				\
 	$(GST_CFLAGS)				\
 	$(GST_CODEC_PARSERS_CFLAGS)		\
 	$(LIBVA_CFLAGS)				\
+	$(LIBVAPL_CFLAGS)			\
 	$(NULL)
 
 libgstvaapi_libs =				\
@@ -40,9 +41,9 @@ libgstvaapi_libs =				\
 	$(GST_VIDEO_LIBS)			\
 	$(GST_CODEC_PARSERS_LIBS)		\
 	$(LIBVA_LIBS)				\
+	$(LIBVAPL_LIBS)				\
 	$(top_builddir)/gst-libs/gst/base/libgstvaapi-baseutils.la \
-	$(top_builddir)/gst-libs/gst/video/libgstvaapi-videoutils.la \
-	$(top_builddir)/gst-libs/gst/codecparsers/libgstvaapi-codecparsers.la
+	$(top_builddir)/gst-libs/gst/video/libgstvaapi-videoutils.la
 
 libgstvaapi_source_c =				\
 	gstvaapicodec_objects.c			\
