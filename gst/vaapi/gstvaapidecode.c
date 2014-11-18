@@ -907,8 +907,6 @@ gst_vaapidecode_ensure_allowed_caps(GstVaapiDecode *decode)
         const GstVaapiProfile profile =
             g_array_index(profiles, GstVaapiProfile, i);
         const gchar *media_type_name;
-        const gchar *profile_name;
-        GstStructure *structure;
 
         media_type_name = gst_vaapi_profile_get_media_type_name(profile);
         if (!media_type_name)
@@ -917,12 +915,17 @@ gst_vaapidecode_ensure_allowed_caps(GstVaapiDecode *decode)
         caps = gst_caps_from_string(media_type_name);
         if (!caps)
             continue;
-        structure = gst_caps_get_structure (caps, 0);
 
-        profile_name = gst_vaapi_profile_get_name(profile);
-        if (profile_name)
-            gst_structure_set(structure, "profile", G_TYPE_STRING,
-                profile_name, NULL);
+#if GST_CHECK_VERSION(1,5,0)
+        do {
+            const gchar *profile_name;
+
+            profile_name = gst_vaapi_profile_get_name(profile);
+            if (profile_name)
+                gst_structure_set(gst_caps_get_structure(caps, 0),
+                    "profile", G_TYPE_STRING, profile_name, NULL);
+        } while (0);
+#endif
 
         allowed_caps = gst_caps_merge(allowed_caps, caps);
     }
