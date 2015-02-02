@@ -26,6 +26,11 @@ libgstvaapi_LIBS += \
 	$(top_builddir)/gst-libs/gst/vaapi/libgstvaapi-glx-$(GST_API_VERSION).la
 endif
 
+if USE_EGL
+libgstvaapi_LIBS += \
+	$(top_builddir)/gst-libs/gst/vaapi/libgstvaapi-egl-$(GST_API_VERSION).la
+endif
+
 if USE_WAYLAND
 libgstvaapi_CFLAGS += \
 	$(WAYLAND_CFLAGS)	\
@@ -100,6 +105,14 @@ if !USE_GST_API_1_2p
 libgstvaapi_source_c += $(libgstvaapi_glx_source_c)
 libgstvaapi_source_h += $(libgstvaapi_glx_source_h)
 endif
+endif
+
+libgstvaapi_egl_source_c =
+libgstvaapi_egl_source_h =
+
+if USE_EGL
+libgstvaapi_source_c += $(libgstvaapi_egl_source_c)
+libgstvaapi_source_h += $(libgstvaapi_egl_source_h)
 endif
 
 libgstvaapi_1_2p_source_c = \
@@ -246,6 +259,8 @@ EXTRA_DIST = \
 	$(libgstvaapi_x11_source_h)	\
 	$(libgstvaapi_glx_source_c)	\
 	$(libgstvaapi_glx_source_h)	\
+	$(libgstvaapi_egl_source_c)	\
+	$(libgstvaapi_egl_source_h)	\
 	$(libgstvaapi_1_2p_source_c)	\
 	$(libgstvaapi_1_2p_source_h)	\
 	$(libgstvaapi_1_0p_source_c)	\
