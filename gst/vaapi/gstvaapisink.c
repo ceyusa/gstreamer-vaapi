@@ -111,8 +111,6 @@ G_DEFINE_TYPE_WITH_CODE (GstVaapiSink,
     G_IMPLEMENT_INTERFACE (GST_TYPE_NAVIGATION,
         gst_vaapisink_navigation_iface_init));
 
-GST_VAAPI_PLUGIN_BASE_DEFINE_SET_CONTEXT (gst_vaapisink_parent_class);
-
 enum
 {
   HANDOFF_SIGNAL,
@@ -502,6 +500,10 @@ gst_vaapisink_backend_x11 (void)
 #include <gst/vaapi/gstvaapidisplay_wayland.h>
 #include <gst/vaapi/gstvaapiwindow_wayland.h>
 
+/* The type of GstContext used to pass the wl_display pointer
+ * from the application to the sink */
+#define GST_WAYLAND_DISPLAY_HANDLE_CONTEXT_TYPE "GstWaylandDisplayHandleContextType"
+
 static gboolean
 gst_vaapisink_wayland_create_window (GstVaapiSink * sink, guint width,
     guint height)
@@ -536,6 +538,24 @@ gst_vaapisink_wayland_create_window_from_handle (GstVaapiSink * sink,
   return sink->window != NULL;
 }
 
+static void
+gst_vaapisink_wayland_set_context (GstVaapiSink * sink, GstContext * context)
+{
+  struct wl_display *wldisplay;
+  const GstStructure *s;
+  GstVaapiDisplay *const display = GST_VAAPI_PLUGIN_BASE_DISPLAY (sink);
+
+  if (!gst_context_has_context_type (context,
+          GST_WAYLAND_DISPLAY_HANDLE_CONTEXT_TYPE))
+    return;
+
+  s = gst_context_get_structure (context);
+  gst_structure_get (s, "handle", G_TYPE_POINTER, &wldisplay, NULL);
+
+  g_printerr ("Trying to set wl_display = %p in current display = %p",
+    wldisplay, display);
+}
+
 static const inline GstVaapiSinkBackend *
 gst_vaapisink_backend_wayland (void)
 {
@@ -543,6 +563,7 @@ gst_vaapisink_backend_wayland (void)
     .create_window = gst_vaapisink_wayland_create_window,
     .create_window_from_handle = gst_vaapisink_wayland_create_window_from_handle,
     .render_surface = gst_vaapisink_render_surface,
+    .set_context = gst_vaapisink_wayland_set_context
   };
   return &GstVaapiSinkBackendWayland;
 }
@@ -1731,6 +1752,19 @@ gst_vaapisink_event (GstBaseSink * base_sink, GstEvent * event)
 }
 
 static void
+gst_vaapisink_set_context (GstElement * element, GstContext * context)
+{
+  GstVaapiSink *sink = GST_VAAPISINK_CAST (element);
+
+  if (sink->backend->set_context)
+    sink->backend->set_context (sink, context);
+
+  gst_vaapi_plugin_base_set_context (GST_VAAPI_PLUGIN_BASE (element), context);
+  GST_ELEMENT_CLASS (gst_vaapisink_parent_class)->set_context (element,
+      context);
+}
+
+static void
 gst_vaapisink_class_init (GstVaapiSinkClass * klass)
 {
   GObjectClass *const object_class = G_OBJECT_CLASS (klass);
@@ -1763,7 +1797,7 @@ gst_vaapisink_class_init (GstVaapiSinkClass * klass)
 
   videosink_class->show_frame = GST_DEBUG_FUNCPTR (gst_vaapisink_show_frame);
 
-  element_class->set_context = gst_vaapi_base_set_context;
+  element_class->set_context = gst_vaapisink_set_context;
   gst_element_class_set_static_metadata (element_class,
       "VA-API sink", "Sink/Video", GST_PLUGIN_DESC,
       "Gwenole Beauchesne <gwenole.beauchesne@intel.com>");

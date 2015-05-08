@@ -57,6 +57,8 @@ typedef gboolean (*GstVaapiSinkCreateWindowFromHandleFunc) (GstVaapiSink * sink,
 typedef gboolean (*GstVaapiSinkRenderSurfaceFunc) (GstVaapiSink * sink,
     GstVaapiSurface * surface, const GstVaapiRectangle * surface_rect,
     guint flags);
+typedef void (*GstVaapiSinkSetContextFunc) (GstVaapiSink * sink,
+    GstContext * context);
 typedef gboolean (*GstVaapiSinkHandleEventsFunc) (GstVaapiSink * sink);
 typedef gboolean (*GstVaapiSinkPreStartEventThreadFunc) (GstVaapiSink * sink);
 typedef gboolean (*GstVaapiSinkPreStopEventThreadFunc) (GstVaapiSink * sink);
@@ -66,6 +68,7 @@ struct _GstVaapiSinkBackend
   GstVaapiSinkCreateWindowFunc create_window;
   GstVaapiSinkCreateWindowFromHandleFunc create_window_from_handle;
   GstVaapiSinkRenderSurfaceFunc render_surface;
+  GstVaapiSinkSetContextFunc set_context;
 
   /* Event threads handling */
   gboolean event_thread_needed;
