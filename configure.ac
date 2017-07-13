@@ -892,6 +892,39 @@ VAEncMiscParameterTypeVP9PerSegmantParam misc_param;
     ])
   AS_IF([test "x$ac_cv_have_vp9_encoding_api" = "xyes"], [USE_VP9_ENCODER=1])
 
+  dnl Check for H264 FEI Encoding API
+  AC_CHECK_HEADERS([va/va_fei_h264.h], [], [],
+    [
+#include <va/va.h>
+    ])
+  AC_CACHE_CHECK([for H264_FEI encoding API],
+    [ac_cv_have_h264_fei_encoding_api],
+    [
+      saved_CPPFLAGS="$CPPFLAGS"
+      CPPFLAGS="$CPPFLAGS $LIBVA_CFLAGS"
+      saved_LIBS="$LIBS"
+      LIBS="$LIBS $LIBVA_LIBS"
+      AC_COMPILE_IFELSE(
+        [
+          AC_LANG_PROGRAM(
+            [[
+#include <va/va.h>
+#ifdef HAVE_VA_VA_FEI_H264_H
+# include <va/va_fei_h264.h>
+#endif
+            ]],
+            [[
+VAPictureFEI feipic;
+VAEncMiscParameterFEIFrameControlH264 framectl;
+VAStatsStatisticsParameter stat;
+            ]])
+        ],
+        [ac_cv_have_h264_fei_encoding_api="yes"],
+        [ac_cv_have_h264_fei_encoding_api="no"])
+      CPPFLAGS="$saved_CPPFLAGS"
+      LIBS="$saved_LIBS"
+    ])
+  AS_IF([test "x$ac_cv_have_h264_fei_encoding_api" = "xyes"], [USE_H264_FEI_ENCODER=1])
   CPPFLAGS="$saved_CPPFLAGS"
 fi
 
@@ -996,6 +1029,10 @@ AM_CONDITIONAL([USE_H265_ENCODER], [test $USE_H265_ENCODER -eq 1])
 AC_DEFINE_UNQUOTED([USE_VP9_ENCODER], [$USE_VP9_ENCODER],
   [Defined to 1 if VP9 encoder is used])
 AM_CONDITIONAL([USE_VP9_ENCODER], [test $USE_VP9_ENCODER -eq 1])
+
+AC_DEFINE_UNQUOTED([USE_H264_FEI_ENCODER], [$USE_H264_FEI_ENCODER],
+  [Defined to 1 if H264_FEI encoder is used])
+AM_CONDITIONAL([USE_H264_FEI_ENCODER], [test $USE_H264_FEI_ENCODER -eq 1])
 
 AC_DEFINE_UNQUOTED([USE_VA_VPP], [$USE_VA_VPP],
   [Defined to 1 if video post-processing is used])
