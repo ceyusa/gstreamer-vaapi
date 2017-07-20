@@ -50,4 +50,8 @@
 # include <va/va_dec_hevc.h>
 #endif
 
+#ifdef HAVE_VA_VA_FEI_H264_H
+# include <va/va_fei_h264.h>
+#endif
+
 #endif /* GST_VAAPI_COMPAT_H */

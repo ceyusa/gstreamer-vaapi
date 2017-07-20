@@ -241,15 +241,22 @@ endif
 
 libgstvaapi_h264feienc_source_c =		\
 	gstvaapifeiutils_h264.c			\
+	gstvaapifei_objects.c			\
 	$(NULL)
 
 libgstvaapi_h264feienc_source_h =		\
 	gstvaapifeiutils_h264.h			\
+	gstvaapifei_objects.h			\
+	$(NULL)
+
+libgstvaapi_h264feienc_source_priv_h =		\
+	gstvaapifei_objects_priv.h		\
 	$(NULL)
 
 if USE_H264_FEI_ENCODER
 libgstvaapi_source_c += $(libgstvaapi_h264feienc_source_c)
 libgstvaapi_source_h += $(libgstvaapi_h264feienc_source_h)
+libgstvaapi_source_priv_h += $(libgstvaapi_h264feienc_source_priv_h)
 endif
 
 libgstvaapi_drm_source_c =			\
