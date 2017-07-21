@@ -26,6 +26,10 @@
 #include <gst/vaapi/gstvaapicodedbuffer.h>
 #include <gst/vaapi/gstvaapicodedbufferpool.h>
 
+#if USE_H264_FEI_ENCODER
+#include <gst/vaapi/gstvaapifei_objects.h>
+#endif
+
 G_BEGIN_DECLS
 
 /**
@@ -76,6 +80,19 @@ gst_vaapi_coded_buffer_proxy_get_user_data (GstVaapiCodedBufferProxy * proxy);
 void
 gst_vaapi_coded_buffer_proxy_set_user_data (GstVaapiCodedBufferProxy * proxy,
     gpointer user_data, GDestroyNotify destroy_func);
+
+#if USE_H264_FEI_ENCODER
+
+GstVaapiEncFeiMbCode *
+gst_vaapi_coded_buffer_proxy_get_fei_mbcode (GstVaapiCodedBufferProxy * proxy);
+
+GstVaapiEncFeiMv *
+gst_vaapi_coded_buffer_proxy_get_fei_mv (GstVaapiCodedBufferProxy * proxy);
+
+GstVaapiEncFeiDistortion *
+gst_vaapi_coded_buffer_proxy_get_fei_distortion (GstVaapiCodedBufferProxy * proxy);
+
+#endif
 
 G_END_DECLS
 

@@ -54,6 +54,19 @@ coded_buffer_proxy_finalize (GstVaapiCodedBufferProxy * proxy)
   /* Notify the user function that the object is now destroyed */
   if (proxy->destroy_func)
     proxy->destroy_func (proxy->destroy_data);
+
+#if USE_H264_FEI_ENCODER
+  if (proxy->mbcode)
+    gst_vaapi_fei_codec_object_replace ((GstVaapiFeiCodecObject **) &
+        proxy->mbcode, NULL);
+  if (proxy->mv)
+    gst_vaapi_fei_codec_object_replace ((GstVaapiFeiCodecObject **) &
+        proxy->mv, NULL);
+  if (proxy->dist)
+    gst_vaapi_fei_codec_object_replace ((GstVaapiFeiCodecObject **) &
+        proxy->dist, NULL);
+#endif
+
 }
 
 static inline const GstVaapiMiniObjectClass *
@@ -254,3 +267,29 @@ gst_vaapi_coded_buffer_proxy_set_user_data (GstVaapiCodedBufferProxy * proxy,
 
   coded_buffer_proxy_set_user_data (proxy, user_data, destroy_func);
 }
+
+#if USE_H264_FEI_ENCODER
+
+GstVaapiEncFeiMbCode *
+gst_vaapi_coded_buffer_proxy_get_fei_mbcode (GstVaapiCodedBufferProxy * proxy)
+{
+  g_return_val_if_fail (proxy != NULL, 0);
+  return proxy->mbcode;
+}
+
+GstVaapiEncFeiMv *
+gst_vaapi_coded_buffer_proxy_get_fei_mv (GstVaapiCodedBufferProxy * proxy)
+{
+  g_return_val_if_fail (proxy != NULL, 0);
+  return proxy->mv;
+}
+
+GstVaapiEncFeiDistortion *
+gst_vaapi_coded_buffer_proxy_get_fei_distortion (GstVaapiCodedBufferProxy *
+    proxy)
+{
+  g_return_val_if_fail (proxy != NULL, 0);
+  return proxy->dist;
+}
+
+#endif
