@@ -25,6 +25,9 @@
 
 #include <glib.h>
 
+/*FIXME: Include based on specific codec API */
+#include "gstvaapicompat.h"
+
 G_BEGIN_DECLS
 
 typedef gpointer                                   GstVaapiFeiCodecBase;
@@ -222,6 +225,12 @@ static const GstVaapiFeiCodecObjectClass G_PASTE (type, Class) = {      \
   .create = (GstVaapiFeiCodecObjectCreateFunc)                          \
       G_PASTE (prefix, _create),                                        \
 }
+
+/* GstVaapiEncFeiMiscParam */
+#define GST_VAAPI_ENC_FEI_MISC_PARAM_NEW(codec, encoder)                \
+  gst_vaapi_enc_misc_param_new (GST_VAAPI_ENCODER_CAST (encoder),       \
+      VAEncMiscParameterTypeFEIFrameControl,                            \
+      sizeof (G_PASTE (VAEncMiscParameterFEIFrameControl, codec)))
 
 G_END_DECLS
 
