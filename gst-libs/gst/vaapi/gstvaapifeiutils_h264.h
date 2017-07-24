@@ -42,14 +42,30 @@ struct _GstVaapiFeiInfoToPakH264
   guint h264_slice_num;
 };
 
+/******************* Common FEI enum definition for all codecs ***********/
+
 /* FIXME: This should be a common fei mode for all codecs, move to a
  * common header file */
+#define GST_VAAPI_FEI_MODE_DEFAULT GST_VAAPI_FEI_MODE_ENC_PAK
+
 typedef enum
 {
   GST_VAAPI_FEI_MODE_ENC     = (1 << 0),
   GST_VAAPI_FEI_MODE_PAK     = (1 << 1),
   GST_VAAPI_FEI_MODE_ENC_PAK = (1 << 2)
 } GstVaapiFeiMode;
+
+/**
+* GST_VAAPI_TYPE_FEI_MODE:
+*
+* A type that represents the fei encoding mode.
+*
+* Return value: the #GType of GstVaapiFeiMode
+*/
+#define GST_VAAPI_TYPE_FEI_MODE (gst_vaapi_fei_mode_get_type())
+
+
+/******************* H264 Specific FEI enum definitions  ***********/
 
 typedef enum
 {
@@ -96,26 +112,15 @@ typedef enum
 } GstVaapiFeiH264IntraPartMask;
 
 
+
 #define GST_VAAPI_FEI_H264_SEARCH_PATH_DEFAULT GST_VAAPI_FEI_H264_FULL_SEARCH_PATH
 #define GST_VAAPI_FEI_H264_SEARCH_WINDOW_DEFAULT GST_VAAPI_FEI_H264_SEARCH_WINDOW_NONE
 #define GST_VAAPI_FEI_H264_SUB_PEL_MODE_DEFAULT GST_VAAPI_FEI_H264_INTEGER_ME
 #define GST_VAAPI_FEI_H264_SAD_MODE_DEFAULT GST_VAAPI_FEI_H264_SAD_NONE_TRANS
 #define GST_VAAPI_FEI_H264_INTRA_PART_MASK_DEFAULT GST_VAAPI_FEI_H264_DISABLE_INTRA_NONE
-#define GST_VAAPI_FEI_H264_MODE_DEFAULT GST_VAAPI_FEI_H264_MODE_ENC_PAK
 #define GST_VAAPI_FEI_H264_SEARCH_PATH_LENGTH_DEFAULT  32
 #define GST_VAAPI_FEI_H264_REF_WIDTH_DEFAULT           32
 #define GST_VAAPI_FEI_H264_REF_HEIGHT_DEFAULT          32
-
-/**
-* GST_VAAPI_TYPE_FEI_H264_MODE:
-*
-* A type that represents the fei encoding mode.
-*
-* Return value: the #GType of GstVaapiFeiH264Mode
-*/
-
-#define GST_VAAPI_TYPE_FEI_H264_MODE (gst_vaapi_fei_h264_mode_get_type())
-
 
 /**
 * GST_VAAPI_TYPE_FEI_H264_SEARCH_PATH:
