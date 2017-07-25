@@ -27,7 +27,6 @@
 #include <gst/vaapi/gstvaapiencoder.h>
 #include <gst/vaapi/gstvaapiutils_h264.h>
 #include <gst/vaapi/gstvaapifeiutils_h264.h>
-#include <gst/vaapi/gstvaapifei_objects_priv.h>
 
 G_BEGIN_DECLS
 
