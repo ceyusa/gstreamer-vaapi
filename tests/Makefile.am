@@ -14,6 +14,12 @@ noinst_PROGRAMS += \
 	$(NULL)
 endif
 
+if USE_H264_FEI_ENCODER
+noinst_PROGRAMS += \
+        test-fei-enc            	\
+        $(NULL)
+endif
+
 if USE_GLX
 noinst_PROGRAMS += \
 	test-textures			\
@@ -135,6 +141,11 @@ test_textures_SOURCES	= test-textures.c
 test_textures_CFLAGS	= $(TEST_CFLAGS)
 test_textures_LDFLAGS   = $(GST_VAAPI_LIBS)
 test_textures_LDADD	= libutils.la $(TEST_LIBS)
+
+test_fei_enc_SOURCES     = test-fei-enc.c ../gst/vaapi/gstvaapifeivideometa.h
+test_fei_enc_CFLAGS      = $(TEST_CFLAGS)
+test_fei_enc_LDFLAGS     = $(GST_VAAPI_LIBS)
+test_fei_enc_LDADD       = libutils.la $(TEST_LIBS)
 
 simple_decoder_source_c	= simple-decoder.c
 simple_decoder_source_h	=
