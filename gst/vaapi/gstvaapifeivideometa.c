@@ -28,17 +28,6 @@
 #include "gstcompat.h"
 #include "gstvaapifeivideometa.h"
 
-#define GST_VAAPI_FEI_VIDEO_META(obj) \
-  ((GstVaapiFeiVideoMeta *) (obj))
-#define GST_VAAPI_IS_FEI_VIDEO_META(obj) \
-  (GST_VAAPI_FEI_VIDEO_META (obj) != NULL)
-
-struct _GstVaapiFeiVideoMetaHolder
-{
-  GstMeta base;
-  GstVaapiFeiVideoMeta *meta;
-};
-
 static void
 gst_vaapi_fei_video_meta_finalize (GstVaapiFeiVideoMeta * meta)
 {

@@ -31,6 +31,17 @@ G_BEGIN_DECLS
 typedef struct _GstVaapiFeiVideoMeta GstVaapiFeiVideoMeta;
 typedef struct _GstVaapiFeiVideoMetaHolder GstVaapiFeiVideoMetaHolder;
 
+#define GST_VAAPI_FEI_VIDEO_META(obj) \
+  ((GstVaapiFeiVideoMeta *) (obj))
+#define GST_VAAPI_IS_FEI_VIDEO_META(obj) \
+  (GST_VAAPI_FEI_VIDEO_META (obj) != NULL)
+
+struct _GstVaapiFeiVideoMetaHolder
+{
+  GstMeta base;
+  GstVaapiFeiVideoMeta *meta;
+};
+
 struct _GstVaapiFeiVideoMeta {
   GstVaapiEncFeiMbCode *mbcode;
   GstVaapiEncFeiMv *mv;
