@@ -17,6 +17,7 @@ endif
 if USE_H264_FEI_ENCODER
 noinst_PROGRAMS += \
         test-fei-enc            	\
+        test-fei-pak            	\
         $(NULL)
 endif
 
@@ -146,6 +147,13 @@ test_fei_enc_SOURCES     = test-fei-enc.c ../gst/vaapi/gstvaapifeivideometa.h
 test_fei_enc_CFLAGS      = $(TEST_CFLAGS)
 test_fei_enc_LDFLAGS     = $(GST_VAAPI_LIBS)
 test_fei_enc_LDADD       = libutils.la $(TEST_LIBS)
+
+test_fei_pak_sources_c   = test-fei-pak.c ../gst/vaapi/gstvaapifeivideometa.h y4mreader.c
+test_fei_pak_sources_h   = y4mreader.h
+test_fei_pak_SOURCES     = $(test_fei_pak_sources_c)
+test_fei_pak_CFLAGS      = $(TEST_CFLAGS) $(GST_VIDEO_CFLAGS)
+test_fei_pak_LDFLAGS     = $(GST_VAAPI_LIBS)
+test_fei_pak_LDADD       = libutils.la $(TEST_LIBS)  $(GST_VIDEO_LIBS)
 
 simple_decoder_source_c	= simple-decoder.c
 simple_decoder_source_h	=
