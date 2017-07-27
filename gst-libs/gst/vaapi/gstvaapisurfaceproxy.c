@@ -573,7 +573,7 @@ gst_vaapi_surface_proxy_set_fei_mb_control (GstVaapiSurfaceProxy * proxy,
 {
   g_return_if_fail (proxy != NULL);
   gst_vaapi_fei_codec_object_replace ((GstVaapiFeiCodecObject **) &
-      proxy->mvpred, (GstVaapiFeiCodecObject *) mbcntrl);
+      proxy->mbnctrl, (GstVaapiFeiCodecObject *) mbcntrl);
 }
 
 #endif
