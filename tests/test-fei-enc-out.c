@@ -1,5 +1,5 @@
 /*
- * test-fei-enc.c - FEI Encoder Test application
+ * test-fei-enc-out.c - FEI Encoder Test application to dump output buffers
  *
  * Copyright (C) 2017 Intel Corporation
  *
@@ -19,14 +19,14 @@
  * Boston, MA 02110-1301 USA
  */
 
-/* ./test-fei-enc -i sample_320x240.nv12 -w 320 -h 240 -o out.264 -v mv.out -d dist.out -m mbcode.out -e 1 */
+/* ./test-fei-enc -i sample_320x240.nv12 -f nv12 -w 320 -h 240 -o out.264 -v mv.out -d dist.out -m mbcode.out -e 1 */
 
 #include <stdio.h>
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
 #include <stdlib.h>
 #include "../gst/vaapi/gstvaapifeivideometa.h"
-
+#include <gst/video/video.h>
 int
 main (int argc, char *argv[])
 {
@@ -34,17 +34,19 @@ main (int argc, char *argv[])
   GError *err = NULL;
   GstStateChangeReturn ret;
   GstSample *sample;
+  GstVideoFormat raw_format = GST_VIDEO_FORMAT_NV12;
   GOptionContext *ctx;
   FILE *file = NULL;
   FILE *mv_file = NULL;
   FILE *dist_file = NULL;
   FILE *mbcode_file = NULL;
   FILE *fei_stat_file = NULL;
-  gchar *input_nv12_file_name = NULL;
+  gchar *input_file_name = NULL;
   gchar *output_file_name = NULL;
   gchar *output_mv_name = NULL;
   gchar *output_distortion_name = NULL;
   gchar *output_mbcode_name = NULL;
+  gchar *input_format;
   guint input_width;
   guint input_height;
   guint enc_frame_num = 0;
@@ -59,8 +61,8 @@ main (int argc, char *argv[])
   guint mapped_data_size = 0;
 
   GOptionEntry options[] = {
-    {"input nv12 file", 'i', 0, G_OPTION_ARG_STRING, &input_nv12_file_name,
-        "NV12 file to encode", NULL},
+    {"input file", 'i', 0, G_OPTION_ARG_STRING, &input_file_name,
+        "file to encode", NULL},
     {"output file", 'o', 0, G_OPTION_ARG_STRING, &output_file_name,
         "encpak output file", NULL},
     {"output mv file", 'v', 0, G_OPTION_ARG_STRING, &output_mv_name,
@@ -70,6 +72,8 @@ main (int argc, char *argv[])
         "encpak distortion output file", NULL},
     {"output mbcode file", 'm', 0, G_OPTION_ARG_STRING, &output_mbcode_name,
         "encpak mbcode output file", NULL},
+    {"format", 'f', 0, G_OPTION_ARG_STRING, &input_format,
+        "input raw format: nv12 or i420", NULL},
     {"width", 'w', 0, G_OPTION_ARG_INT, &input_width,
         "input stream width", NULL},
     {"height", 'h', 0, G_OPTION_ARG_INT, &input_height,
@@ -96,11 +100,19 @@ main (int argc, char *argv[])
     return -1;
   }
 
-  if (input_nv12_file_name == NULL || output_file_name == NULL) {
+  if (input_file_name == NULL || output_file_name == NULL) {
     g_print ("%s", g_option_context_get_help (ctx, TRUE, NULL));
     g_option_context_free (ctx);
     return -1;
   }
+
+  if (!g_strcmp0 (input_format, "nv12"))
+    raw_format = GST_VIDEO_FORMAT_NV12;
+  else if (!g_strcmp0 (input_format, "i420"))
+    raw_format = GST_VIDEO_FORMAT_I420;
+  else
+    return -1;
+
   if (!input_width || !input_height) {
     g_print ("%s", g_option_context_get_help (ctx, TRUE, NULL));
     g_option_context_free (ctx);
@@ -132,8 +144,8 @@ main (int argc, char *argv[])
   appsink = gst_element_factory_make ("appsink", "sink");
 
   /* element prop setup */
-  g_object_set (G_OBJECT (filesrc), "location", input_nv12_file_name, NULL);
-  g_object_set (G_OBJECT (videoparse), "format", 23,    //Fixme
+  g_object_set (G_OBJECT (filesrc), "location", input_file_name, NULL);
+  g_object_set (G_OBJECT (videoparse), "format", raw_format,
       "width", input_width, "height", input_height, NULL);
 
   if (enc_frame_num != 0)

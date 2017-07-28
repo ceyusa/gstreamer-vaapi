@@ -1,5 +1,5 @@
 /*
- * test-fei-pak.c - Test GstVaapiH264PakEncoder
+ * test-fei-enc-in.c - Test FEI input buffer submission
  *
  * Copyright (C) 2016 Intel Corporation
  *
@@ -20,6 +20,7 @@
  * Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301 USA
  */
+/* sample pipeline: ./test-fei-enc-input -c h264 -o out.264 -e 4 -q 1 sample_i420.y4m */
 
 #include <assert.h>
 #include <fcntl.h>
