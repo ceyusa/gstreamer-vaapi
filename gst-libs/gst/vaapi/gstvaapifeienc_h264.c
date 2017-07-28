@@ -1371,9 +1371,9 @@ reset_properties (GstVaapiFeiEncH264 * feienc)
     feienc->num_bframes = 0;
   }
 
-  if (feienc->num_bframes)
-    feienc->cts_offset = GST_SECOND * GST_VAAPI_ENCODER_FPS_D (feienc) /
-        GST_VAAPI_ENCODER_FPS_N (feienc);
+  if (feienc->num_bframes > 0 && GST_VAAPI_ENCODER_FPS_N (feienc) > 0)
+    feienc->cts_offset = gst_util_uint64_scale (GST_SECOND,
+        GST_VAAPI_ENCODER_FPS_D (feienc), GST_VAAPI_ENCODER_FPS_N (feienc));
   else
     feienc->cts_offset = 0;
 
