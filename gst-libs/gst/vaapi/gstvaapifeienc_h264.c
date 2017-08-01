@@ -1694,6 +1694,7 @@ gst_vaapi_feienc_h264_init (GstVaapiEncoder * base_encoder)
   feienc->ref_width = GST_VAAPI_FEI_H264_REF_WIDTH_DEFAULT;
   feienc->ref_height = GST_VAAPI_FEI_H264_REF_HEIGHT_DEFAULT;
   feienc->intra_part_mask = GST_VAAPI_FEI_H264_INTRA_PART_MASK_DEFAULT;
+  feienc->submb_part_mask = GST_VAAPI_FEI_H264_SUB_MB_PART_MASK_DEFAULT;
 
   /* Multi-view coding information */
   feienc->is_mvc = FALSE;
@@ -1816,7 +1817,7 @@ gst_vaapi_feienc_h264_set_property (GstVaapiEncoder * base_encoder,
       feienc->ref_height = g_value_get_uint (value);
       break;
     case GST_VAAPI_FEI_H264_ENC_PROP_SUBMB_MASK:
-      feienc->submb_part_mask = g_value_get_uint (value);
+      feienc->submb_part_mask = g_value_get_flags (value);
       break;
     case GST_VAAPI_FEI_H264_ENC_PROP_SUBPEL_MODE:
       feienc->subpel_mode = g_value_get_enum (value);
@@ -1987,13 +1988,18 @@ gst_vaapi_feienc_h264_get_fei_properties (GPtrArray * props)
           4, 32, 32, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   /**
     * GstVaapiFeiEncH264:submb-mask:
-    * */
+    * Defines the bit-mask for disabling sub-partition
+    *
+    */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_FEI_H264_ENC_PROP_SUBMB_MASK,
-      g_param_spec_uint ("submb-mask",
-          "submb mask",
-          "What block and sub-block partitions should be excluded",
-          0, 127, 0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+      g_param_spec_flags ("submbpart-mask",
+          "submb part mask",
+          "defines the bit-mask for disabling sub mb partition",
+          GST_VAAPI_TYPE_FEI_H264_SUB_MB_PART_MASK,
+          GST_VAAPI_FEI_H264_SUB_MB_PART_MASK_DEFAULT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   /**
     * GstVaapiFeiEncH264:subpel-mode:
     */

@@ -174,3 +174,43 @@ gst_vaapi_fei_h264_intra_part_mask_get_type (void)
   }
   return g_type;
 }
+
+/* --- GstVaapiFeiH264SubMbPartMask --- */
+GType
+gst_vaapi_fei_h264_sub_mb_part_mask_get_type (void)
+{
+  static volatile gsize g_type = 0;
+
+  static const GFlagsValue sub_mb_part_mask_values[] = {
+    {GST_VAAPI_FEI_H264_DISABLE_SUB_MB_PART_MASK_NONE,
+        "enable all subpartitions", "enable all"},
+    {GST_VAAPI_FEI_H264_DISABLE_SUB_MB_PART_MASK_16x16,
+        "16x16 sub-macroblock disabled", "16x16 submb part disabled"},
+    {GST_VAAPI_FEI_H264_DISABLE_SUB_MB_PART_MASK_2x16x8,
+          "2x(16x8) sub-macroblock within 16x16 disabled",
+        "16x8 submb part disabled"},
+    {GST_VAAPI_FEI_H264_DISABLE_SUB_MB_PART_MASK_2x8x16,
+          "2x(8x16) sub-macroblock within 16x16 disabled",
+        "8x16 submb part disabled"},
+    {GST_VAAPI_FEI_H264_DISABLE_SUB_MB_PART_MASK_1x8x8,
+          "1x(8x8) sub-partition for 4x(8x8) within 16x16 disabled",
+        "8x8 submb part disabled"},
+    {GST_VAAPI_FEI_H264_DISABLE_SUB_MB_PART_MASK_2x8x4,
+          "2x(8x4) sub-partition for 4x(8x8) within 16x16 disabled",
+        "8x4 submb part disabled"},
+    {GST_VAAPI_FEI_H264_DISABLE_SUB_MB_PART_MASK_2x4x8,
+          "2x(4x8) sub-partition for 4x(8x8) within 16x16 disabled",
+        "4x8 submb part disabled"},
+    {GST_VAAPI_FEI_H264_DISABLE_SUB_MB_PART_MASK_4x4x4,
+          "4x(4x4) sub-partition for 4x(8x8) within 16x16 disabled",
+        "4x4 submb part disabled"},
+    {0, NULL, NULL},
+  };
+
+  if (g_once_init_enter (&g_type)) {
+    GType type = g_flags_register_static ("GstVaapiFeiH264SubMbPartMask",
+        sub_mb_part_mask_values);
+    g_once_init_leave (&g_type, type);
+  }
+  return g_type;
+}
