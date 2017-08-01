@@ -469,7 +469,7 @@ app_run (App * app)
     gpointer data = NULL;
     guint size = 0;
     gint rt = 0;
-    guint mb_width, mb_height;
+    guint mb_width, mb_height, mb_size;
 
     if (!load_frame (app, image))
       break;
@@ -496,6 +496,7 @@ app_run (App * app)
 
     mb_width = (app->parser->width + 15) >> 4;
     mb_height = (app->parser->height + 15) >> 4;
+    mb_size = mb_width * mb_height;
 
     /* PAK Only */
     if (fei_mode == PAK) {
@@ -548,7 +549,7 @@ app_run (App * app)
         assert (rt == 1);
 
         pqp = (VAEncQpBufferH264 *) data;
-        for (i = 0; i < qp_size; i++) {
+        for (i = 0; i < mb_size; i++) {
           pqp->qp_y = input_qp;
           pqp++;
         }
@@ -568,8 +569,8 @@ app_run (App * app)
         assert (rt == 1);
 
         pmbcntrl = (VAEncFEIMBControlH264 *) data;
-        for (i = 0; i < mbcntrl_size; i++) {
-          pmbcntrl->force_to_intra = 0;
+        for (i = 0; i < mb_size; i++) {
+          pmbcntrl->force_to_intra = 1;
           pmbcntrl->force_to_skip = 0;
           pmbcntrl->force_to_nonskip = 0;
           pmbcntrl->enable_direct_bias_adjustment = 0;
@@ -596,7 +597,7 @@ app_run (App * app)
         assert (rt == 1);
 
         pmvpred = (VAEncFEIMVPredictorH264 *) data;
-        for (i = 0; i < mvpred_size; i++) {
+        for (i = 0; i < mb_size; i++) {
           for (j = 0; i < 4; i++) {
             pmvpred->ref_idx[j].ref_idx_l0 = 0;
             pmvpred->ref_idx[j].ref_idx_l1 = 0;
