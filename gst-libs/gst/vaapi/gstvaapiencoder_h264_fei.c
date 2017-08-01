@@ -3329,6 +3329,7 @@ gst_vaapi_encoder_h264_fei_init (GstVaapiEncoder * base_encoder)
   encoder->len_sp = GST_VAAPI_FEI_H264_SEARCH_PATH_LENGTH_DEFAULT;
   encoder->ref_width = GST_VAAPI_FEI_H264_REF_WIDTH_DEFAULT;
   encoder->ref_height = GST_VAAPI_FEI_H264_REF_HEIGHT_DEFAULT;
+  encoder->intra_part_mask = GST_VAAPI_FEI_H264_INTRA_PART_MASK_DEFAULT;
   /* default num ref frames */
   encoder->num_ref_frames = 1;
   /* Multi-view coding information */
@@ -3516,7 +3517,7 @@ gst_vaapi_encoder_h264_fei_set_property (GstVaapiEncoder * base_encoder,
       encoder->subpel_mode = g_value_get_enum (value);
       break;
     case GST_VAAPI_ENCODER_H264_PROP_INTRA_PART_MASK:
-      encoder->intra_part_mask = g_value_get_enum (value);
+      encoder->intra_part_mask = g_value_get_flags (value);
       break;
     case GST_VAAPI_ENCODER_H264_PROP_INTRA_SAD:
       encoder->intra_sad = g_value_get_enum (value);
@@ -3866,7 +3867,7 @@ gst_vaapi_encoder_h264_get_fei_properties (GPtrArray * props)
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_INTRA_PART_MASK,
-      g_param_spec_enum ("intrapart-mask",
+      g_param_spec_flags ("intrapart-mask",
           "intra part mask",
           "Specifies which Luma Intra partition is enabled/disabled for"
           "intra mode decision",

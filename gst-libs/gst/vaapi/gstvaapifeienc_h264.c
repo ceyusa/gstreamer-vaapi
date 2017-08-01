@@ -1693,6 +1693,7 @@ gst_vaapi_feienc_h264_init (GstVaapiEncoder * base_encoder)
   feienc->len_sp = GST_VAAPI_FEI_H264_SEARCH_PATH_LENGTH_DEFAULT;
   feienc->ref_width = GST_VAAPI_FEI_H264_REF_WIDTH_DEFAULT;
   feienc->ref_height = GST_VAAPI_FEI_H264_REF_HEIGHT_DEFAULT;
+  feienc->intra_part_mask = GST_VAAPI_FEI_H264_INTRA_PART_MASK_DEFAULT;
 
   /* Multi-view coding information */
   feienc->is_mvc = FALSE;
@@ -1821,7 +1822,7 @@ gst_vaapi_feienc_h264_set_property (GstVaapiEncoder * base_encoder,
       feienc->subpel_mode = g_value_get_enum (value);
       break;
     case GST_VAAPI_FEI_H264_ENC_PROP_INTRA_PART_MASK:
-      feienc->intra_part_mask = g_value_get_enum (value);
+      feienc->intra_part_mask = g_value_get_flags (value);
       break;
     case GST_VAAPI_FEI_H264_ENC_PROP_INTRA_SAD:
       feienc->intra_sad = g_value_get_enum (value);
@@ -2009,7 +2010,7 @@ gst_vaapi_feienc_h264_get_fei_properties (GPtrArray * props)
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_FEI_H264_ENC_PROP_INTRA_PART_MASK,
-      g_param_spec_enum ("intrapart-mask",
+      g_param_spec_flags ("intrapart-mask",
           "intra part mask",
           "What block and sub-block partitions are disabled for intra MBs",
           GST_VAAPI_TYPE_FEI_H264_INTRA_PART_MASK,

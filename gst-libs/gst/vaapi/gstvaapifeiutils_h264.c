@@ -155,30 +155,20 @@ gst_vaapi_fei_h264_intra_part_mask_get_type (void)
 {
   static volatile gsize g_type = 0;
 
-  static const GEnumValue intra_part_mask_values[] = {
+  static const GFlagsValue intra_part_mask_values[] = {
     {GST_VAAPI_FEI_H264_DISABLE_INTRA_NONE,
         "enable all intra mode", "enable all"},
     {GST_VAAPI_FEI_H264_DISABLE_INTRA_16x16,
         "luma_intra_16x16 disabled", "intra16x16 disabled"},
     {GST_VAAPI_FEI_H264_DISABLE_INTRA_8x8,
         "luma_intra_8x8 disabled", "intra8x8 disabled"},
-    {GST_VAAPI_FEI_H264_DISABLE_INTRA_16x16_8x8,
-          "luma_intra_8x8 and luma_intra_16x16 disabled",
-        "intra8x8/16x16 disabled"},
     {GST_VAAPI_FEI_H264_DISABLE_INTRA_4x4,
         "luma_intra_4x4 disabled", "intra4x4 disabled"},
-    {GST_VAAPI_FEI_H264_DISABLE_INTRA_16x16_4x4,
-          "luma_intra_4x4 and luma_intra_16x16 disabled",
-        "intra4x4/16x16 disabled"},
-    {GST_VAAPI_FEI_H264_DISABLE_INTRA_8x8_4x4,
-        "luma_intra_4x4 and luma_intra_8x8 disabled", "intra4x4/8x8 disabled"},
-    {GST_VAAPI_FEI_H264_DISABLE_INTRA_ALL,
-        "intra prediction is disabled", "intra prediction is disabled"},
     {0, NULL, NULL},
   };
 
   if (g_once_init_enter (&g_type)) {
-    GType type = g_enum_register_static ("GstVaapiFeiH264IntraPartMask",
+    GType type = g_flags_register_static ("GstVaapiFeiH264IntraPartMask",
         intra_part_mask_values);
     g_once_init_leave (&g_type, type);
   }
