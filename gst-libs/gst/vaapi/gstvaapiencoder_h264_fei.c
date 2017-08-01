@@ -3733,9 +3733,13 @@ gst_vaapi_encoder_h264_get_fei_properties (GPtrArray * props)
 
 
   /**
-    * GstVaapiEncoderH264: statistic-out:
+    * GstVaapiEncoderH264: stats-out:
     *
-    * if fei is enabled
+    * Enable outputting fei buffers MV, MBCode and Distortion.
+    * If enabled, encoder will allocate memory for these buffers
+    * and submit to the driver even for ENC_PAK mode so that
+    * the output data can be extraced for analysis after the
+    * complettion of each frame ncode
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_ENABLE_STATS_OUT,
@@ -3746,28 +3750,32 @@ gst_vaapi_encoder_h264_get_fei_properties (GPtrArray * props)
 
   /**
     * GstVaapiEncoderH264:num_mv_predictors_l0:
-    *
-    * The number of mv predict
+    * Indicate how many mv predictors should be used for l0 frames.
+    * Only valid if MVPredictor input has been enabled.
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_NUM_MV_PREDICT_L0,
       g_param_spec_uint ("num-mvpredict-l0",
           "Num mv predict l0",
-          "Indicate how many predictors should be used for l0",
+          "Indicate how many predictors should be used for l0,"
+          "only valid if MVPredictor input enabled",
           0, 3, 0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   /**
     * GstVaapiEncoderH264:num_mv_predictors_l1:
+    * Indicate how many mv predictors should be used for l1 frames.
+    * Only valid if MVPredictor input has been enabled.
     *
-    * The number of mv predict
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_NUM_MV_PREDICT_L1,
       g_param_spec_uint ("num-mvpredict-l1",
           "Num mv predict l1",
-          "Indicate how many predictors should be used for l1",
+          "Indicate how many predictors should be used for l1,"
+          "only valid if MVPredictor input enabled",
           0, 3, 0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
  /**
     * GstVaapiEncoderH264:search-window:
+    * Use predefined Search Window
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_SEARCH_WINDOW,
@@ -3780,16 +3788,19 @@ gst_vaapi_encoder_h264_get_fei_properties (GPtrArray * props)
 
   /**
     * GstVaapiEncoderH264:len-sp:
+    * Defines the maximum number of Search Units per reference.
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_LEN_SP,
       g_param_spec_uint ("len-sp",
-          "len sp",
+          "length of search path",
           "This value defines number of search units in search path",
           1, 63, 32, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   /**
     * GstVaapiEncoderH264:search-path:
+    * SearchPath defines the motion search method.
+    * Zero means full search, 1 indicate diamond search.
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_SEARCH_PATH,
@@ -3802,6 +3813,7 @@ gst_vaapi_encoder_h264_get_fei_properties (GPtrArray * props)
 
   /**
     * GstVaapiEncoderH264:ref-width:
+    * Specifies the search region width in pixels.
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_REF_WIDTH,
@@ -3812,6 +3824,7 @@ gst_vaapi_encoder_h264_get_fei_properties (GPtrArray * props)
 
   /**
     * GstVaapiEncoderH264:ref-height:
+    * Specifies the search region height in pixels.
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_REF_HEIGHT,
@@ -3821,7 +3834,9 @@ gst_vaapi_encoder_h264_get_fei_properties (GPtrArray * props)
           4, 32, 32, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   /**
     * GstVaapiEncoderH264:submb-mask:
-    * */
+    * Defines the bit-mask for disabling sub-partition
+    *
+    */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_SUBMB_MASK,
       g_param_spec_uint ("submb-mask",
@@ -3831,6 +3846,10 @@ gst_vaapi_encoder_h264_get_fei_properties (GPtrArray * props)
 
   /**
     * GstVaapiEncoderH264:subpel-mode:
+    * defines the half/quarter pel modes
+    * 00: integer mode searching
+    * 01: half-pel mode searching
+    * 11: quarter-pel mode searching
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_SUBPEL_MODE,
@@ -3842,40 +3861,50 @@ gst_vaapi_encoder_h264_get_fei_properties (GPtrArray * props)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   /**
     * GstVaapiEncoderH264:intrapart-mask:
+    * Specifies which Luma Intra partition is enabled/disabled
+    * for intra mode decision
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_INTRA_PART_MASK,
       g_param_spec_enum ("intrapart-mask",
           "intra part mask",
-          "What block and sub-block partitions are disabled for intra MBs",
+          "Specifies which Luma Intra partition is enabled/disabled for"
+          "intra mode decision",
           GST_VAAPI_TYPE_FEI_H264_INTRA_PART_MASK,
           GST_VAAPI_FEI_H264_INTRA_PART_MASK_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   /**
     * GstVaapiEncoderH264:intra-sad:
+    * Specifies distortion measure adjustments used for
+    * the motion search SAD comparison.
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_INTRA_SAD,
       g_param_spec_enum ("intra-sad",
           "intra sad",
-          "Specifies distortion measure adjustments used in the motion search SAD comparison for intra MB",
+          "Specifies distortion measure adjustments used"
+          "in the motion search SAD comparison for intra MB",
           GST_VAAPI_TYPE_FEI_H264_SAD_MODE, GST_VAAPI_FEI_H264_SAD_MODE_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   /**
     * GstVaapiEncoderH264:inter-sad:
+    * Specifies distortion measure adjustments used
+    * in the motion search SAD comparison for inter MB
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_INTER_SAD,
       g_param_spec_enum ("inter-sad",
           "inter sad",
-          "Specifies distortion measure adjustments used in the motion search SAD comparison for inter MB",
+          "Specifies distortion measure adjustments used"
+          "in the motion search SAD comparison for inter MB",
           GST_VAAPI_TYPE_FEI_H264_SAD_MODE, GST_VAAPI_FEI_H264_SAD_MODE_DEFAULT,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   /**
     * GstVaapiEncoderH264:adaptive-search:
+    * Defines whether adaptive searching is enabled for IME
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_ADAPT_SEARCH,
@@ -3885,27 +3914,40 @@ gst_vaapi_encoder_h264_get_fei_properties (GPtrArray * props)
           FALSE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   /**
     * GstVaapiEncoderH264:multi-predL0:
+    * When set to 1, neighbor MV will be used as predictor for list L0,
+    * otherwise no neighbor MV will be used as predictor
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_MULTI_PRED_L0,
       g_param_spec_boolean ("multi-predL0",
           "multi predL0",
-          "Enable multi prediction for ref L0 list",
+          "Enable multi prediction for ref L0 list, when set neighbor MV will be used"
+          "as predictor, no neighbor MV will be used otherwise",
           FALSE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   /**
-    * GstVaapiEncoderH264:multi-predL0:
+    * GstVaapiEncoderH264:multi-predL1:
+    * When set to 1, neighbor MV will be used as predictor
+    * when set to 0, no neighbor MV will be used as predictor.
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
       GST_VAAPI_ENCODER_H264_PROP_MULTI_PRED_L1,
       g_param_spec_boolean ("multi-predL1",
           "multi predL1",
-          "Enable multi prediction for ref L1 list",
+          "Enable multi prediction for ref L1 list, when set neighbor MV will be used"
+          "as predictor, no neighbor MV will be used otherwise",
           FALSE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
    /**
     * GstVaapiEncoderH264Fei: fei-mode:
     *
+    * Cose ENC, PAK, ENC_PAK, or ENC+PAK
+    * ENC: Only the Motion Estimation, no transformation or entropy coding
+    * PAK: transformation, quantization and entropy coding
+    * ENC_PAK: default mode, enc an pak are invoked by driver, middleware has
+               control over ENC input only
+    * ENC+PAK: enc and pak invoked separately, middleware has control over the ENC input,
+               ENC output, and PAK input
     * Encoding mode which can be used for FEI
     */
   GST_VAAPI_ENCODER_PROPERTIES_APPEND (props,
@@ -3921,8 +3963,6 @@ gst_vaapi_encoder_h264_get_fei_properties (GPtrArray * props)
 }
 
 GST_VAAPI_ENCODER_DEFINE_CLASS_DATA (H264);
-
-//GST_VAAPI_ENCODER_DEFINE_CLASS_DATA (H264);
 
 static const GstVaapiEncoderClassData fei_encoder_class_data = {
   .codec = GST_VAAPI_CODEC_H264,
