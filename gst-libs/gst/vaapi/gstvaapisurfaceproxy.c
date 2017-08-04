@@ -51,7 +51,7 @@ gst_vaapi_surface_proxy_finalize (GstVaapiSurfaceProxy * proxy)
   if (proxy->destroy_func)
     proxy->destroy_func (proxy->destroy_data);
 
-#ifdef USE_H264_FEI_ENCODER
+#if USE_H264_FEI_ENCODER
   if (proxy->mvpred)
     gst_vaapi_fei_codec_object_replace ((GstVaapiFeiCodecObject **) &
         proxy->mvpred, NULL);
@@ -90,7 +90,7 @@ gst_vaapi_surface_proxy_init_properties (GstVaapiSurfaceProxy * proxy)
   proxy->timestamp = GST_CLOCK_TIME_NONE;
   proxy->duration = GST_CLOCK_TIME_NONE;
   proxy->has_crop_rect = FALSE;
-#ifdef USE_H264_FEI_ENCODER
+#if USE_H264_FEI_ENCODER
   proxy->mvpred = NULL;
   proxy->mbcntrl = NULL;
   proxy->qp = NULL;
@@ -219,7 +219,7 @@ gst_vaapi_surface_proxy_copy (GstVaapiSurfaceProxy * proxy)
   if (copy->has_crop_rect)
     copy->crop_rect = proxy->crop_rect;
 
-#ifdef USE_H264_FEI_ENCODER
+#if USE_H264_FEI_ENCODER
 
   if (proxy->mv)
     copy->mv = (GstVaapiEncFeiMv *)
@@ -478,7 +478,7 @@ gst_vaapi_surface_proxy_set_crop_rect (GstVaapiSurfaceProxy * proxy,
     proxy->crop_rect = *crop_rect;
 }
 
-#ifdef USE_H264_FEI_ENCODER
+#if USE_H264_FEI_ENCODER
 
 GstVaapiEncFeiMbCode *
 gst_vaapi_surface_proxy_get_fei_mb_code (GstVaapiSurfaceProxy * proxy)

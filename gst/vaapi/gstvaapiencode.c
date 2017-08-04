@@ -651,7 +651,7 @@ gst_vaapiencode_handle_frame (GstVideoEncoder * venc,
   if (!proxy)
     goto error_buffer_no_surface_proxy;
 
-#ifdef USE_H264_FEI_ENCODER
+#if USE_H264_FEI_ENCODER
   feimeta = gst_buffer_get_vaapi_fei_video_meta (buf);
   if (feimeta && klass->load_control_data)
     klass->load_control_data (encode, feimeta, proxy);
