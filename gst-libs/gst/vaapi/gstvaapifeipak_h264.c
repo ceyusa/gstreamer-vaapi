@@ -1704,97 +1704,7 @@ error:
 GstVaapiEncoderStatus
 gst_vaapi_feipak_h264_flush (GstVaapiFEIPakH264 * feipak)
 {
-
   return GST_VAAPI_ENCODER_STATUS_SUCCESS;
-}
-
-/* Generate "codec-data" buffer */
-GstVaapiEncoderStatus
-gst_vaapi_feipak_h264_get_codec_data (GstVaapiFEIPakH264 * feipak,
-    GstBuffer ** out_buffer_ptr)
-{
-  const guint32 configuration_version = 0x01;
-  const guint32 nal_length_size = 4;
-  guint8 profile_idc, profile_comp, level_idc;
-  GstMapInfo sps_info, pps_info;
-  GstBitWriter bs;
-  GstBuffer *buffer;
-
-  if (!feipak->sps_data || !feipak->pps_data)
-    return GST_VAAPI_ENCODER_STATUS_ERROR_INVALID_HEADER;
-  if (gst_buffer_get_size (feipak->sps_data) < 4)
-    return GST_VAAPI_ENCODER_STATUS_ERROR_INVALID_HEADER;
-
-  if (!gst_buffer_map (feipak->sps_data, &sps_info, GST_MAP_READ))
-    goto error_map_sps_buffer;
-
-  if (!gst_buffer_map (feipak->pps_data, &pps_info, GST_MAP_READ))
-    goto error_map_pps_buffer;
-
-  /* skip sps_data[0], which is the nal_unit_type */
-  profile_idc = sps_info.data[1];
-  profile_comp = sps_info.data[2];
-  level_idc = sps_info.data[3];
-
-  /* Header */
-  gst_bit_writer_init (&bs, (sps_info.size + pps_info.size + 64) * 8);
-  WRITE_UINT32 (&bs, configuration_version, 8);
-  WRITE_UINT32 (&bs, profile_idc, 8);
-  WRITE_UINT32 (&bs, profile_comp, 8);
-  WRITE_UINT32 (&bs, level_idc, 8);
-  WRITE_UINT32 (&bs, 0x3f, 6);  /* 111111 */
-  WRITE_UINT32 (&bs, nal_length_size - 1, 2);
-  WRITE_UINT32 (&bs, 0x07, 3);  /* 111 */
-
-  /* Write SPS */
-  WRITE_UINT32 (&bs, 1, 5);     /* SPS count = 1 */
-  g_assert (GST_BIT_WRITER_BIT_SIZE (&bs) % 8 == 0);
-  WRITE_UINT32 (&bs, sps_info.size, 16);
-  gst_bit_writer_put_bytes (&bs, sps_info.data, sps_info.size);
-
-  /* Write PPS */
-  WRITE_UINT32 (&bs, 1, 8);     /* PPS count = 1 */
-  WRITE_UINT32 (&bs, pps_info.size, 16);
-  gst_bit_writer_put_bytes (&bs, pps_info.data, pps_info.size);
-
-  gst_buffer_unmap (feipak->pps_data, &pps_info);
-  gst_buffer_unmap (feipak->sps_data, &sps_info);
-
-  buffer = gst_buffer_new_wrapped (GST_BIT_WRITER_DATA (&bs),
-      GST_BIT_WRITER_BIT_SIZE (&bs) / 8);
-  if (!buffer)
-    goto error_alloc_buffer;
-  *out_buffer_ptr = buffer;
-
-  gst_bit_writer_clear (&bs, FALSE);
-  return GST_VAAPI_ENCODER_STATUS_SUCCESS;
-
-  /* ERRORS */
-bs_error:
-  {
-    GST_ERROR ("failed to write codec-data");
-    gst_buffer_unmap (feipak->sps_data, &sps_info);
-    gst_buffer_unmap (feipak->pps_data, &pps_info);
-    gst_bit_writer_clear (&bs, TRUE);
-    return FALSE;
-  }
-error_map_sps_buffer:
-  {
-    GST_ERROR ("failed to map SPS packed header");
-    return GST_VAAPI_ENCODER_STATUS_ERROR_ALLOCATION_FAILED;
-  }
-error_map_pps_buffer:
-  {
-    GST_ERROR ("failed to map PPS packed header");
-    gst_buffer_unmap (feipak->sps_data, &sps_info);
-    return GST_VAAPI_ENCODER_STATUS_ERROR_ALLOCATION_FAILED;
-  }
-error_alloc_buffer:
-  {
-    GST_ERROR ("failed to allocate codec-data buffer");
-    gst_bit_writer_clear (&bs, TRUE);
-    return GST_VAAPI_ENCODER_STATUS_ERROR_ALLOCATION_FAILED;
-  }
 }
 
 GstVaapiEncoderStatus
@@ -1832,7 +1742,7 @@ gst_vaapi_feipak_h264_reconfigure (GstVaapiFEIPakH264 * feipak,
   return GST_VAAPI_ENCODER_STATUS_SUCCESS;
 }
 
-gboolean
+static gboolean
 gst_vaapi_feipak_h264_init (GstVaapiFEIPakH264 * feipak,
     GstVaapiEncoder * encoder, GstVaapiDisplay * display,
     VAContextID va_context)
@@ -1872,7 +1782,7 @@ gst_vaapi_feipak_h264_init (GstVaapiFEIPakH264 * feipak,
   return TRUE;
 }
 
-void
+static void
 gst_vaapi_feipak_h264_finalize (GstVaapiFEIPakH264 * feipak)
 {
   GstVaapiFEIPakH264Ref *ref;
@@ -1903,6 +1813,9 @@ gst_vaapi_feipak_h264_set_property (GstVaapiFEIPakH264 * feipak,
     case GST_VAAPI_FEIPAK_H264_PROP_MAX_BFRAMES:
       feipak->num_bframes = g_value_get_uint (value);
       break;
+    case GST_VAAPI_FEIPAK_H264_PROP_NUM_VIEWS:
+      feipak->num_views = g_value_get_uint (value);
+      break;
     case GST_VAAPI_FEIPAK_H264_PROP_VIEW_IDS:{
       guint i;
       GValueArray *view_ids = g_value_get_boxed (value);
@@ -1921,7 +1834,7 @@ gst_vaapi_feipak_h264_set_property (GstVaapiFEIPakH264 * feipak,
       break;
     }
     default:
-      return GST_VAAPI_ENCODER_STATUS_SUCCESS;
+      return GST_VAAPI_ENCODER_STATUS_ERROR_INVALID_PARAMETER;
   }
   return GST_VAAPI_ENCODER_STATUS_SUCCESS;
 }

@@ -64,13 +64,6 @@ typedef enum
   GST_VAAPI_FEIPAK_H264_PROP_NUM_REF = -10,
 } GstVaapiFEIPakH264Prop;
 
-gboolean
-gst_vaapi_feipak_h264_init (GstVaapiFEIPakH264 * feipak,
-    GstVaapiEncoder * encoder, GstVaapiDisplay * display,
-    VAContextID va_context);
-
-void gst_vaapi_feipak_h264_finalize (GstVaapiFEIPakH264 * feipak);
-
 GstVaapiEncoderStatus
 gst_vaapi_feipak_h264_reconfigure (GstVaapiFEIPakH264 * feipak,
     VAContextID va_context, GstVaapiProfile profile, guint8 profile_idc,
@@ -82,7 +75,8 @@ gst_vaapi_feipak_h264_encode (GstVaapiFEIPakH264 * feipak,
     GstVaapiEncPicture * picture, GstVaapiCodedBufferProxy * codedbuf,
     GstVaapiSurfaceProxy * surface, GstVaapiFeiInfoToPakH264 *info_to_pak);
 
-GstVaapiEncoderStatus gst_vaapi_feipak_h264_flush (GstVaapiFEIPakH264 * feipak);
+GstVaapiEncoderStatus
+gst_vaapi_feipak_h264_flush (GstVaapiFEIPakH264 * feipak);
 
 GstVaapiFEIPakH264 *gst_vaapi_feipak_h264_new (GstVaapiEncoder * encoder,
     GstVaapiDisplay * display, VAContextID va_context);
@@ -90,10 +84,6 @@ GstVaapiFEIPakH264 *gst_vaapi_feipak_h264_new (GstVaapiEncoder * encoder,
 GstVaapiEncoderStatus
 gst_vaapi_feipak_h264_set_property (GstVaapiFEIPakH264 * feipak,
     gint prop_id, const GValue * value);
-
-GstVaapiEncoderStatus
-gst_vaapi_feipak_h264_get_codec_data (GstVaapiFEIPakH264 * feipak,
-    GstBuffer ** out_buffer_ptr);
 
 gboolean
 gst_vaapi_feipak_h264_get_ref_pool (GstVaapiFEIPakH264 * feipak,

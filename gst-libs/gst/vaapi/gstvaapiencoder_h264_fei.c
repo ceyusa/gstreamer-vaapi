@@ -2899,18 +2899,6 @@ gst_vaapi_encoder_h264_fei_get_codec_data (GstVaapiEncoder * base_encoder,
   GstMapInfo sps_info, pps_info;
   GstBitWriter bs;
   GstBuffer *buffer;
-  GstVaapiEncoderStatus status;
-
-  if ((encoder->fei_mode != GST_VAAPI_FEI_MODE_ENC_PAK)
-      && (encoder->fei_mode != GST_VAAPI_FEI_MODE_PAK)) {
-    status =
-        gst_vaapi_feipak_h264_get_codec_data (encoder->feipak, out_buffer_ptr);
-    if (status != GST_VAAPI_ENCODER_STATUS_SUCCESS) {
-      GST_ERROR ("failed to get pak codec data");
-      return status;
-    }
-    return status;
-  }
 
   if (!encoder->sps_data || !encoder->pps_data)
     return GST_VAAPI_ENCODER_STATUS_ERROR_INVALID_HEADER;
@@ -3194,9 +3182,8 @@ gst_vaapi_encoder_h264_fei_reconfigure (GstVaapiEncoder * base_encoder)
   guint mb_width, mb_height;
   const guint DEFAULT_SURFACES_COUNT = 3;
 
-  if ((encoder->fei_mode == GST_VAAPI_FEI_MODE_ENC_PAK)
-      || (encoder->fei_mode == GST_VAAPI_FEI_MODE_PAK)) {
-    /* ENC_PAK mode doesn't need to care about ENC and PAK
+  if (encoder->fei_mode != (GST_VAAPI_FEI_MODE_ENC | GST_VAAPI_FEI_MODE_PAK)) {
+    /* ENC_PAK, ENC and PAK modes doesn't need to care about ENC and PAK
      * abstrct objects */
     mb_width = (GST_VAAPI_ENCODER_WIDTH (encoder) + 15) / 16;
     mb_height = (GST_VAAPI_ENCODER_HEIGHT (encoder) + 15) / 16;
@@ -3227,8 +3214,8 @@ gst_vaapi_encoder_h264_fei_reconfigure (GstVaapiEncoder * base_encoder)
       return status;
 
   } else {
-    /* ENC, PAK and ENC+PAK mode requires two separate objects
-     * for ENC and PAK */
+    /* ENC+PAK mode requires two separate objects
+       for ENC and PAK */
 
     /* Maximum sizes for common headers (in bits) */
     enum
@@ -3547,7 +3534,7 @@ gst_vaapi_encoder_h264_fei_set_property (GstVaapiEncoder * base_encoder,
         encoder->fei_mode = GST_VAAPI_FEI_MODE_ENC | GST_VAAPI_FEI_MODE_PAK;
       } else if (encoder->fei_mode == GST_VAAPI_FEI_MODE_PAK) {
         g_warning ("============ PAK only mode selected ============ \n"
-            "This mode can work as expected, only if there is a custom user specific upstream element which provides mb_code and mv_vectors. If you are running the pipeline only for verification, We recommand to use the fei-mod ENC|PAK which will run the ENC operation and  generate what ever input needed for PAK \n");
+            "This mode can work as expected, only if there is a custom user specific upstream element which provides mb_code and mv_vectors. If you are running the pipeline only for verification, We recommand to use the fei-mod ENC+PAK which will run the ENC operation and  generate what ever input needed for PAK \n");
       }
 
       break;
@@ -3559,10 +3546,7 @@ gst_vaapi_encoder_h264_fei_set_property (GstVaapiEncoder * base_encoder,
   if ((prop_id != GST_VAAPI_ENCODER_H264_PROP_FEI_MODE) &&
       (prop_id != GST_VAAPI_ENCODER_H264_PROP_FEI_DISABLE) &&
       (prop_id != GST_VAAPI_ENCODER_H264_PROP_ENABLE_STATS_OUT)) {
-  /**
-   * when new feiencoder, enc_base_encoder is NULL.
-   * Only need enc class when set input property.
-   */
+
     if (enc_base_encoder) {
       status =
           gst_vaapi_feienc_h264_set_property (enc_base_encoder, prop_id, value);
@@ -3572,12 +3556,17 @@ gst_vaapi_encoder_h264_fei_set_property (GstVaapiEncoder * base_encoder,
       }
     }
 
-    if (encoder->feipak) {
-      status =
-          gst_vaapi_feipak_h264_set_property (encoder->feipak, prop_id, value);
-      if (status != GST_VAAPI_ENCODER_STATUS_SUCCESS) {
-        GST_ERROR ("failed to set pak property");
-        return status;
+    if ((prop_id == GST_VAAPI_ENCODER_H264_FEI_PROP_MAX_BFRAMES) ||
+        (prop_id == GST_VAAPI_ENCODER_H264_FEI_PROP_VIEW_IDS) ||
+        (prop_id == GST_VAAPI_ENCODER_H264_FEI_PROP_NUM_VIEWS)) {
+      if (encoder->feipak) {
+        status =
+            gst_vaapi_feipak_h264_set_property (encoder->feipak, prop_id,
+            value);
+        if (status != GST_VAAPI_ENCODER_STATUS_SUCCESS) {
+          GST_ERROR ("failed to set pak property");
+          return status;
+        }
       }
     }
   }

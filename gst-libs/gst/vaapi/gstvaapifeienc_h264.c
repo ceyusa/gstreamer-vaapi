@@ -1477,7 +1477,7 @@ gst_vaapi_feienc_h264_flush (GstVaapiEncoder * base_encoder)
 }
 
 /* Generate "codec-data" buffer */
-GstVaapiEncoderStatus
+static GstVaapiEncoderStatus
 gst_vaapi_feienc_h264_get_codec_data (GstVaapiEncoder * base_encoder,
     GstBuffer ** out_buffer_ptr)
 {
@@ -1681,7 +1681,7 @@ gst_vaapi_feienc_h264_reconfigure (GstVaapiEncoder * base_encoder)
   return GST_VAAPI_ENCODER_STATUS_SUCCESS;
 }
 
-gboolean
+static gboolean
 gst_vaapi_feienc_h264_init (GstVaapiEncoder * base_encoder)
 {
   GstVaapiFeiEncH264 *const feienc = GST_VAAPI_FEI_H264_ENC_CAST (base_encoder);
@@ -1720,7 +1720,7 @@ gst_vaapi_feienc_h264_init (GstVaapiEncoder * base_encoder)
   return TRUE;
 }
 
-void
+static void
 gst_vaapi_feienc_h264_finalize (GstVaapiEncoder * base_encoder)
 {
   /*free private buffers */

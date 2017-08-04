@@ -81,9 +81,11 @@ typedef enum
   GST_VAAPI_FEI_H264_ENC_PROP_ENABLE_STATS_OUT = -27,
 } GstVaapiFeiEncH264Prop;
 
-GstVaapiEncoder *gst_vaapi_feienc_h264_new (GstVaapiDisplay * display);
+GstVaapiEncoder *
+gst_vaapi_feienc_h264_new (GstVaapiDisplay * display);
 
-GPtrArray *gst_vaapi_feienc_h264_get_default_properties (void);
+GPtrArray *
+gst_vaapi_feienc_h264_get_default_properties (void);
 
 gboolean
 gst_vaapi_feienc_h264_set_max_profile (GstVaapiFeiEncH264 * feienc,
@@ -97,7 +99,8 @@ gst_vaapi_feienc_h264_encode (GstVaapiEncoder * base_encoder,
     GstVaapiEncPicture * picture, GstVaapiSurfaceProxy * reconstruct,
     GstVaapiCodedBufferProxy * codedbuf_proxy, GstVaapiFeiInfoToPakH264 *info_to_pak);
 
-GstVaapiEncoderStatus gst_vaapi_feienc_h264_flush (GstVaapiEncoder * base_encoder);
+GstVaapiEncoderStatus
+gst_vaapi_feienc_h264_flush (GstVaapiEncoder * base_encoder);
 
 GstVaapiEncoderStatus
 gst_vaapi_feienc_h264_reordering (GstVaapiEncoder * base_encoder,
@@ -106,17 +109,9 @@ gst_vaapi_feienc_h264_reordering (GstVaapiEncoder * base_encoder,
 GstVaapiEncoderStatus
 gst_vaapi_feienc_h264_reconfigure (GstVaapiEncoder * base_encoder);
 
-gboolean gst_vaapi_feienc_h264_init (GstVaapiEncoder * base_encoder);
-
 GstVaapiEncoderStatus
 gst_vaapi_feienc_h264_set_property (GstVaapiEncoder * base_encoder,
     gint prop_id, const GValue * value);
-
-void gst_vaapi_feienc_h264_finalize (GstVaapiEncoder * base_encoder);
-
-GstVaapiEncoderStatus
-gst_vaapi_feienc_h264_get_codec_data (GstVaapiEncoder * base_encoder,
-    GstBuffer ** out_buffer_ptr);
 
 gboolean
 gst_vaapi_feienc_h264_get_profile_and_idc (GstVaapiFeiEncH264 * feienc,
