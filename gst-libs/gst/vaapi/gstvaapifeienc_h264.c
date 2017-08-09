@@ -259,42 +259,6 @@ struct _GstVaapiFeiEncH264
   guint multi_predL1;
 };
 
-static inline void
-_check_sps_pps_status (GstVaapiFeiEncH264 * feienc,
-    const guint8 * nal, guint32 size)
-{
-  guint8 nal_type;
-  G_GNUC_UNUSED gsize ret;      /* FIXME */
-  gboolean has_subset_sps;
-
-  g_assert (size);
-
-  has_subset_sps = !feienc->is_mvc || (feienc->subset_sps_data != NULL);
-  if (feienc->sps_data && feienc->pps_data && has_subset_sps)
-    return;
-
-  nal_type = nal[0] & 0x1F;
-  switch (nal_type) {
-    case GST_H264_NAL_SPS:
-      feienc->sps_data = gst_buffer_new_allocate (NULL, size, NULL);
-      ret = gst_buffer_fill (feienc->sps_data, 0, nal, size);
-      g_assert (ret == size);
-      break;
-    case GST_H264_NAL_SUBSET_SPS:
-      feienc->subset_sps_data = gst_buffer_new_allocate (NULL, size, NULL);
-      ret = gst_buffer_fill (feienc->subset_sps_data, 0, nal, size);
-      g_assert (ret == size);
-      break;
-    case GST_H264_NAL_PPS:
-      feienc->pps_data = gst_buffer_new_allocate (NULL, size, NULL);
-      ret = gst_buffer_fill (feienc->pps_data, 0, nal, size);
-      g_assert (ret == size);
-      break;
-    default:
-      break;
-  }
-}
-
 /* Determines the largest supported profile by the underlying hardware */
 static gboolean
 ensure_hw_profile_limits (GstVaapiFeiEncH264 * feienc)
@@ -1845,9 +1809,6 @@ gst_vaapi_feienc_h264_set_property (GstVaapiEncoder * base_encoder,
   }
   return GST_VAAPI_ENCODER_STATUS_SUCCESS;
 }
-
-
-GST_VAAPI_ENCODER_DEFINE_CLASS_DATA (H264);
 
 static const GstVaapiEncoderClassData fei_enc_class_data = {
   .codec = GST_VAAPI_CODEC_H264,

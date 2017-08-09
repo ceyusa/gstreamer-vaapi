@@ -3955,8 +3955,6 @@ gst_vaapi_encoder_h264_get_fei_properties (GPtrArray * props)
 
 }
 
-GST_VAAPI_ENCODER_DEFINE_CLASS_DATA (H264);
-
 static const GstVaapiEncoderClassData fei_encoder_class_data = {
   .codec = GST_VAAPI_CODEC_H264,
   .packed_headers = SUPPORTED_PACKED_HEADERS,
